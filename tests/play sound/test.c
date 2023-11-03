@@ -1,6 +1,7 @@
 #include "../../include/sal.h"
 
 int main(void) {
-    test();
+    sl_init();
+    printf("%d\n", leSys);
     return 0;
 }
