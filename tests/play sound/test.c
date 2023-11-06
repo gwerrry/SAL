@@ -14,6 +14,7 @@ int main(void) {
     }
 
     fgets(input, 256, stdin);
+    input[strcspn(input, "\n")] = 0;
 
     SL_WAV_FILE* buf = NULL;
     SLenum out = sl_parse_wave_file(input, buf);
@@ -23,6 +24,6 @@ int main(void) {
         printf("Chunk Descriptor ID: %c%c%c%c\n", chunkId[0], chunkId[1], chunkId[2], chunkId[3]);
         printf("Chunk size: %d\n", chunkSize);
     }
-return out;
 
+    return out;
 }

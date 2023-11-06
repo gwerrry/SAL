@@ -86,9 +86,10 @@ typedef struct WAV_FILE_DATA {
  * Functions
  */
 SLenum sl_init(void);
-SLenum ends_with(SLstr str, SLstr suffix);
+
 SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* buf);
 
+SLenum ends_with(SLstr str, SLstr suffix);
 SLshort  sl_flip_endian_short(SLshort s);
 SLushort sl_flip_endian_ushort(SLushort us);
 SLint    sl_flip_endian_int(SLint i);
@@ -99,19 +100,7 @@ SLdouble sl_flip_endian_double(SLdouble d);
 SLuint sl_uint_as_big_endian(SLuchar* buf, SLuint size);
 SLuint sl_uint_as_little_endian(SLuchar* buf, SLuint size);
 
-SLenum ends_with(SLstr str, SLstr suffix) {
-    size_t str_len = strlen(str);
-    size_t suffix_len = strlen(suffix);
-    if (suffix_len > str_len) {
-        return SL_FAIL;
-    }
 
-    char sub[suffix_len];
-    strncpy(sub, str + str_len - suffix_len - 1, suffix_len);
-    sub[suffix_len] = '\0';
-
-    return strcmp(suffix, sub) == 0 ? SL_SUCCESS : SL_FAIL;
-}
 
 // user must manage the memory of path. note this in docs
 SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* buf) {
@@ -128,7 +117,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* buf) {
     }
 
     // try to open file
-    FILE* file = fopen(path, "rb");
+    FILE* file = fopen(path, "r");
     if (file == NULL) {
         ret = SL_FILE_ERROR;
         goto exit;
@@ -198,6 +187,20 @@ SLenum sl_init(void) {
     leSys = *(SLchar *)&n == 1;
 
     return SL_SUCCESS;
+}
+
+SLenum ends_with(SLstr str, SLstr suffix) {
+    size_t str_len = strlen(str);
+    size_t suffix_len = strlen(suffix);
+    if (suffix_len > str_len) {
+        return SL_FAIL;
+    }
+
+    char sub[suffix_len];
+    strncpy(sub, str + str_len - suffix_len - 1, suffix_len);
+    sub[suffix_len] = '\0';
+
+    return strcmp(suffix, sub) == 0 ? SL_SUCCESS : SL_FAIL;
 }
 
 SLshort sl_flip_endian_short(SLshort s) {
