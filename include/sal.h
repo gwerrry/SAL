@@ -8,6 +8,9 @@ extern "C" {
 #include <stdio.h>
 #include <stdint.h>
 #include <memory.h>
+#include <string.h>
+#include <stdlib.h>
+#include <io.h>
 
 /**
  * Type definitions
@@ -22,7 +25,7 @@ extern "C" {
 #define SLenum   uint32_t
 #define SLfloat float
 #define SLdouble double
-
+#define SLstr const char*
 /**
  * Very important. Tells us if the system is Little Endian or Big Endian.
  */
@@ -33,29 +36,23 @@ static SLbool leSys;
 */
 
 #define SL_SUCCESS 69420
+#define SL_PARSE_FAIL 34343
+#define SL_INVALID_VALUE 57843
+#define SL_FILE_ERROR 24354
+#define SL_INVALID_WAVE_FORMAT 59023
+#define SL_FAIL 66666
+#define SL_INVALID_FILE 88920
+
 #define BIG_ENDIAN 1
 #define LITTLE_ENDIAN 0
 
-/**
- * Functions
- */
-SLenum sl_init(void);
-
-SLshort  sl_flip_endian_short(SLshort s);
-SLushort sl_flip_endian_ushort(SLushort us);
-SLint    sl_flip_endian_int(SLint i);
-SLuint   sl_flip_endian_uint(SLuint ui);
-SLenum   sl_flip_endian_enum(SLenum e);
-SLfloat  sl_flip_endian_float(SLfloat f);
-SLdouble sl_flip_endian_double(SLdouble d);
-
-typedef struct WAV_FILE_DATA {
-    //Chunk descriptor
+typedef struct {
     SLuchar chunkID[4];
     SLuint chunkSize;
     SLuchar FORMAT[4];
+} SL_WAV_DESCRIPTOR;
 
-    //FMT sub-chunk
+typedef struct {
     SLuchar subChunk1Id[4];
     SLuint subChunk1Size;
     SLushort audioFormat;
@@ -64,16 +61,142 @@ typedef struct WAV_FILE_DATA {
     SLuint byteRate;
     SLushort blockAlign;
     SLushort bitsPerSample;
+} SL_WAV_FMT;
 
-    //data sub-chunk
+typedef struct {
     SLuchar subChunk2Id[4];
     SLuint subChunk2Size;
+
+    SLuchar*  waveformData;
+} SL_WAV_DATA;
+
+typedef struct WAV_FILE_DATA {
+    //Chunk descriptor
+    SL_WAV_DESCRIPTOR descriptorChunk;
+
+    //FMT sub-chunk
+    SL_WAV_FMT formatChunk;
+
+    //data sub-chunk
+    SL_WAV_DATA dataChunk;
 } SL_WAV_FILE;
 
+
+/**
+ * Functions
+ */
+SLenum sl_init(void);
+SLenum ends_with(SLstr str, SLstr suffix);
+SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* buf);
+
+SLshort  sl_flip_endian_short(SLshort s);
+SLushort sl_flip_endian_ushort(SLushort us);
+SLint    sl_flip_endian_int(SLint i);
+SLuint   sl_flip_endian_uint(SLuint ui);
+SLenum   sl_flip_endian_enum(SLenum e);
+SLfloat  sl_flip_endian_float(SLfloat f);
+SLdouble sl_flip_endian_double(SLdouble d);
+SLuint sl_uint_as_big_endian(SLuchar* buf, SLuint size);
+SLuint sl_uint_as_little_endian(SLuchar* buf, SLuint size);
+
+SLenum ends_with(SLstr str, SLstr suffix) {
+    size_t str_len = strlen(str);
+    size_t suffix_len = strlen(suffix);
+    if (suffix_len > str_len) {
+        return SL_FAIL;
+    }
+
+    char sub[suffix_len];
+    strncpy(sub, str + str_len - suffix_len - 1, suffix_len);
+    sub[suffix_len] = '\0';
+
+    return strcmp(suffix, sub) == 0 ? SL_SUCCESS : SL_FAIL;
+}
+
+// user must manage the memory of path. note this in docs
+SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* buf) {
+    SLenum ret = SL_SUCCESS;
+
+    if (!path) {
+        ret = SL_INVALID_VALUE;
+        goto exit;
+    }
+
+    if (ends_with(path, ".wav") == SL_FAIL) {
+        ret = SL_PARSE_FAIL;
+        goto exit;
+    }
+
+    // try to open file
+    FILE* file = fopen(path, "rb");
+    if (file == NULL) {
+        ret = SL_FILE_ERROR;
+        goto exit;
+    }
+
+    // Allocate bufs
+    SLuchar* buffer4 = (SLuchar*)calloc(4, sizeof(SLuchar));
+    SLuchar* buffer2 = (SLuchar*)calloc(2, sizeof(SLuchar));
+
+    buf = (SL_WAV_FILE*)malloc(sizeof(SL_WAV_FILE));
+
+    //id put this in the lower one, but we have to verify because of the next call
+    if(!buf) {
+        ret = SL_FAIL;
+        goto bufCleanup;
+    }
+
+    buf->dataChunk.waveformData = (SLuchar*)malloc(1);
+
+    if (!buffer4 || !buffer2 || !buf->dataChunk.waveformData) {
+       ret = SL_FAIL;
+       goto bufCleanup;
+    }
+
+    //
+    // Constants here for some byte names and buffers.
+    // RIFF = 0x52494646 (big endian form)
+    // RIFX = 0x52494658 (big endian form)
+    //
+    // const SLuchar rifxID_bytes[4] = {0x52, 0x49, 0x46, 0x58}; MIGHT add support for rifx later. depends on if i feel like it or not.
+
+    const SLuchar riffID_bytes[4] = {0x52, 0x49, 0x46, 0x46};
+    const SLuchar waveID_bytes[4] = {0x57, 0x41, 0x56, 0x45};
+    const SLuchar fmtID_bytes [4] = {0x66, 0x6d, 0x74, 0x20};
+    const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
+
+    fread(buf->descriptorChunk.chunkID, 1, 4, file);
+
+
+    for (int i = 0; i < 4; ++i) {
+        if(buf->descriptorChunk.chunkID[i] != riffID_bytes[i]) {
+            ret = SL_INVALID_WAVE_FORMAT;
+            goto bufCleanup;
+        }
+    }
+
+    fread(buffer4, 1, 4, file);
+    printf("As big: %d", sl_uint_as_big_endian(buffer4, 4));
+    printf("As little: %d", sl_uint_as_big_endian(buffer4, 4));
+
+    goto exit;
+
+    bufCleanup:
+        if(buf) free(buf->dataChunk.waveformData);
+        free(buf);
+        free(buffer4);
+        free(buffer2);
+    fileCleanup:
+        fclose(file);
+    exit:
+        return ret;
+}
+
 SLenum sl_init(void) {
-        // check endian status
-        SLint n = 1;
-        leSys = *(SLchar *)&n == 1;
+    // check endian status
+    SLint n = 1;
+    leSys = *(SLchar *)&n == 1;
+
     return SL_SUCCESS;
 }
 
@@ -142,6 +265,13 @@ SLdouble sl_flip_endian_double(SLdouble d) {
     return swapped;
 }
 
+SLuint sl_uint_as_big_endian(SLuchar* buf, SLuint size) {
+    return (SLint)((buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3]);
+}
+
+SLuint sl_uint_as_little_endian(SLuchar* buf, SLuint size) {
+    return (SLint)(buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24));
+}
 
 #ifdef __cplusplus
 }
