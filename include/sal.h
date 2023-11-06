@@ -49,6 +49,33 @@ SLenum   sl_flip_endian_enum(SLenum e);
 SLfloat  sl_flip_endian_float(SLfloat f);
 SLdouble sl_flip_endian_double(SLdouble d);
 
+typedef struct WAV_FILE_DATA {
+    //Chunk descriptor
+    SLuchar chunkID[4];
+    SLuint chunkSize;
+    SLuchar FORMAT[4];
+
+    //FMT sub-chunk
+    SLuchar subChunk1Id[4];
+    SLuint subChunk1Size;
+    SLushort audioFormat;
+    SLushort numChannels;
+    SLuint sampleRate;
+    SLuint byteRate;
+    SLushort blockAlign;
+    SLushort bitsPerSample;
+
+    //data sub-chunk
+    SLuchar subChunk2Id[4];
+    SLuint subChunk2Size;
+} SL_WAV_FILE;
+
+SLenum sl_init(void) {
+        // check endian status
+        SLint n = 1;
+        leSys = *(SLchar *)&n == 1;
+    return SL_SUCCESS;
+}
 
 SLshort sl_flip_endian_short(SLshort s) {
     // simple bitwise stuff to flip the endianness
@@ -62,10 +89,10 @@ SLushort sl_flip_endian_ushort(SLushort us) {
 
 SLint sl_flip_endian_int(SLint i) {
     // simple bitwise stuff to flip the endianness
-        return ((i >> 24) & 0xff) |
-               ((i << 8) & 0xff0000) |
-               ((i >> 8) & 0xff00) |
-               ((i << 24) & 0xff000000);
+    return ((i >> 24) & 0xff) |
+           ((i << 8) & 0xff0000) |
+           ((i >> 8) & 0xff00) |
+           ((i << 24) & 0xff000000);
 }
 
 SLuint sl_flip_endian_uint(SLuint ui) {
@@ -102,26 +129,19 @@ SLdouble sl_flip_endian_double(SLdouble d) {
 
     // simple bitwise stuff to flip the endianness
     uint64_t swapped_int = ((num_int >> 56) & 0x00000000000000ff) |
-                       ((num_int >> 40) & 0x000000000000ff00) |
-                       ((num_int >> 24) & 0x0000000000ff0000) |
-                       ((num_int >> 8)  & 0x00000000ff000000) |
-                       ((num_int << 8)  & 0x000000ff00000000) |
-                       ((num_int << 24) & 0x0000ff0000000000) |
-                       ((num_int << 40) & 0x00ff000000000000) |
-                       ((num_int << 56) & 0xff00000000000000);
+                           ((num_int >> 40) & 0x000000000000ff00) |
+                           ((num_int >> 24) & 0x0000000000ff0000) |
+                           ((num_int >> 8)  & 0x00000000ff000000) |
+                           ((num_int << 8)  & 0x000000ff00000000) |
+                           ((num_int << 24) & 0x0000ff0000000000) |
+                           ((num_int << 40) & 0x00ff000000000000) |
+                           ((num_int << 56) & 0xff00000000000000);
 
     double swapped;
     memcpy(&swapped, &swapped_int, sizeof(double));
     return swapped;
 }
 
-SLenum sl_init(void) {
-        // check endian status
-        SLint n = 1;
-        leSys = *(SLchar *)&n == 1;
-
-    return SL_SUCCESS;
-}
 
 #ifdef __cplusplus
 }
