@@ -173,7 +173,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
             goto bufCleanup;
         }
     }
-    printf("DEBUG: Chunk ID: %c %c %c %c\n", buf->descriptorChunk.chunkID[0], buf->descriptorChunk.chunkID[1], buf->descriptorChunk.chunkID[2], buf->descriptorChunk.chunkID[3]);
 
     //read and validate chunkSize
     fread(buffer4, 1, 4, file);
@@ -182,7 +181,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         ret = SL_INVALID_WAVE_FORMAT;
         goto bufCleanup;
     }
-    printf("DEBUG: Chunk Size: %d", buf->descriptorChunk.chunkSize);
 
     fread(buf->descriptorChunk.chunkFormat, 1, 4, file);
     for (int i = 0; i < 4; ++i) {
@@ -191,7 +189,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
             goto bufCleanup;
         }
     }
-    printf("DEBUG: Chunk Format: %c %c %c %c\n", buf->descriptorChunk.chunkFormat[0], buf->descriptorChunk.chunkFormat[1], buf->descriptorChunk.chunkFormat[2], buf->descriptorChunk.chunkFormat[3]);
 
     fread(buf->formatChunk.subChunk1Id, 1, 4, file);
     for (int i = 0; i < 4; ++i) {
@@ -200,7 +197,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
             goto bufCleanup;
         }
     }
-    printf("DEBUG: Format Chunk ID: %c %c %c %c\n", buf->formatChunk.subChunk1Id[0], buf->formatChunk.subChunk1Id[1], buf->formatChunk.subChunk1Id[2], buf->formatChunk.subChunk1Id[3]);
 
     fread(buffer4, 1, 4, file);
     buf->formatChunk.subChunk1Size = sl_uint_as_little_endian(buffer4);
@@ -208,11 +204,9 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         ret = SL_INVALID_WAVE_FORMAT;
         goto bufCleanup;
     }
-    printf("DEBUG: Format Chunk Size: %d\n", buf->formatChunk.subChunk1Size);
 
     fread(buffer2, 1, 2, file);
     buf->formatChunk.audioFormat = sl_ushort_as_little_endian(buffer2);
-    printf("DEBUG: Format Chunk Audio Format: %d\n", buf->formatChunk.audioFormat);
     if (buf->formatChunk.audioFormat != 1) {
         ret = SL_INVALID_WAVE_FORMAT;
         goto bufCleanup;
@@ -224,7 +218,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         ret = SL_INVALID_WAVE_FORMAT;
         goto bufCleanup;
     }
-    printf("DEBUG: Format Chunk Num Channels: %d\n", buf->formatChunk.numChannels);
 
     fread(buffer4, 1, 4, file);
     buf->formatChunk.sampleRate = sl_uint_as_little_endian(buffer4);
@@ -232,7 +225,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         ret = SL_INVALID_WAVE_FORMAT;
         goto bufCleanup;
     }
-    printf("DEBUG: Format Chunk Sample Rate: %d\n", buf->formatChunk.sampleRate);
 
     fread(buffer4, 1, 4, file);
     buf->formatChunk.byteRate = sl_uint_as_little_endian(buffer4);
@@ -240,8 +232,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         ret = SL_INVALID_WAVE_FORMAT;
         goto bufCleanup;
     }
-    printf("DEBUG: Format Chunk Byte Rate: %d\n", buf->formatChunk.byteRate);
-
 
     fread(buffer2, 1, 2, file);
     buf->formatChunk.blockAlign = sl_ushort_as_little_endian(buffer2);
@@ -249,7 +239,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         ret = SL_INVALID_WAVE_FORMAT;
         goto bufCleanup;
     }
-    printf("DEBUG: Format Chunk Block Align: %d\n", buf->formatChunk.blockAlign);
 
     fread(buffer2, 1, 2, file);
     buf->formatChunk.bitsPerSample = sl_ushort_as_little_endian(buffer2);
@@ -257,9 +246,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         ret = SL_INVALID_WAVE_FORMAT;
         goto bufCleanup;
     }
-    printf("DEBUG: Format Chunk Bits Per Sample: %d\n", buf->formatChunk.bitsPerSample);
-    //printf("Current Bytes: %x %x %x %x\n", buffer4[0], buffer4[1], buffer4[2], buffer4[3]);
-
 
     //keep reading until find data
     size_t bytesRead = fread(buf->dataChunk.subChunk2Id, 1, 4, file);
@@ -298,16 +284,12 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         goto bufCleanup;
     }
 
-    printf("DEBUG: Format Chunk ID: %c %c %c %c\n", buf->dataChunk.subChunk2Id[0], buf->dataChunk.subChunk2Id[1], buf->dataChunk.subChunk2Id[2], buf->dataChunk.subChunk2Id[3]);
-
     fread(buffer4, 1, 4, file);
     buf->dataChunk.subChunk2Size = sl_uint_as_little_endian(buffer4);
     if (buf->dataChunk.subChunk2Size == 0) {
         ret = SL_INVALID_WAVE_FORMAT;
         goto bufCleanup;
     }
-    printf("DEBUG: Data Chunk Size: %d\n", buf->dataChunk.subChunk2Size);
-
 
     Slullong num_samples = (8 * buf->dataChunk.subChunk2Size) / (buf->formatChunk.numChannels * buf->formatChunk.bitsPerSample);
     Slullong size_of_each_sample = (buf->formatChunk.numChannels * buf->formatChunk.bitsPerSample) / 8;
