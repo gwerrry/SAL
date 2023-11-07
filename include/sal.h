@@ -89,7 +89,7 @@ typedef struct WAV_FILE_DATA {
  */
 SLenum sl_init(void);
 
-SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* buf);
+SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf);
 
 SLenum ends_with(SLstr str, SLstr suffix);
 SLshort  sl_flip_endian_short(SLshort s);
@@ -110,13 +110,16 @@ SLushort sl_ushort_as_little_endian(SLuchar* buf);
 
 
 // user must manage the memory of path. note this in docs
-SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* buf) {
+SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     SLenum ret = SL_SUCCESS;
 
-    if (!path) {
+
+    if (!path || !wavBuf) {
         ret = SL_INVALID_VALUE;
         goto exit;
     }
+
+    SL_WAV_FILE* buf;
 
     if (ends_with(path, ".wav") == SL_FAIL) {
         ret = SL_PARSE_FAIL;
@@ -317,11 +320,15 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* buf) {
         buf->dataChunk.waveformData[i] = sl_flip_endian_short(buf->dataChunk.waveformData[i]);
     }
 
+    *wavBuf = buf;
+
     goto fileCleanup;
 
     bufCleanup:
         if(buf) free(buf->dataChunk.waveformData);
+        buf->dataChunk.waveformData = NULL;
         free(buf);
+        buf = NULL;
     fileCleanup:
         fclose(file);
         free(buffer4);
@@ -329,6 +336,16 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* buf) {
     exit:
         return ret;
 }
+
+void sl_free_wave_file(SL_WAV_FILE** buf) {
+    if(buf && *buf) {
+        free((*buf)->dataChunk.waveformData);
+        (*buf)->dataChunk.waveformData = NULL;
+        free(*buf);
+        *buf = NULL;
+    }
+}
+
 
 SLenum sl_init(void) {
     // check endian status
