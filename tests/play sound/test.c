@@ -3,10 +3,11 @@
 #include <windows.h>
 #include <audioclient.h>
 
+
 int main(void) {
     sl_init();
 
-    printf("Is this system LITTLE endian... %s\n", leSys == 1 ? "yes" : "no");
+    printf("Is this system LITTLE endian... %s\n", sysEndianness == LITTLE_ENDIAN ? "yes" : "no");
 
     printf("What WAVE file would you like to load?\n");
 
@@ -33,3 +34,4 @@ int main(void) {
     sl_cleanup();
     return out;
 }
+
