@@ -13,6 +13,7 @@ int main(void) {
     char *input = malloc(256 * sizeof(char));
     if (input == NULL) {
         printf("Error allocating memory!\n");
+        sl_cleanup();
         return -1;
     }
 
@@ -29,5 +30,6 @@ int main(void) {
         printf("Failed to parse WAVE file at \"%s\".\n", input);
     }
 
+    sl_cleanup();
     return out;
 }
