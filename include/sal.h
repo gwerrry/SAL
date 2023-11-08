@@ -6,11 +6,23 @@ extern "C" {
 #endif // __cplusplus
 
 #include <stdio.h>
-#include <stdint.h>
-#include <memory.h>
-#include <string.h>
 #include <stdlib.h>
-#include <io.h>
+#include <stdint.h>
+#include <string.h>
+
+/**
+ * Include platform specific headers
+ */
+#ifdef __WIN32
+    #include <combaseapi.h>
+    #include <mmdeviceapi.h>
+    #include <audioclient.h>
+    #include <audiopolicy.h>
+#elif defined(__linux__)
+
+#elif defined(__APPLE__) || defined(__MACH__)
+
+#endif
 
 /**
  * Type definitions
@@ -36,14 +48,12 @@ static SLbool leSys;
 /**
  * ERROR/RETURN CODE DEFINITIONS
 */
-
 #define SL_SUCCESS 69420
 #define SL_PARSE_FAIL 34343
 #define SL_INVALID_VALUE 57843
 #define SL_FILE_ERROR 24354
 #define SL_INVALID_WAVE_FORMAT 59023
 #define SL_FAIL 66666
-#define SL_INVALID_FILE 88920
 
 #define BIG_ENDIAN 1
 #define LITTLE_ENDIAN 0
@@ -83,14 +93,14 @@ typedef struct WAV_FILE_DATA {
     SL_WAV_DATA dataChunk;
 } SL_WAV_FILE;
 
-
 /**
  * Functions
  */
 SLenum sl_init(void);
+SLenum sl_cleanup(void);
 
 SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf);
-
+void sl_free_wave_file(SL_WAV_FILE** buf);
 SLenum ends_with(SLstr str, SLstr suffix);
 SLshort  sl_flip_endian_short(SLshort s);
 SLushort sl_flip_endian_ushort(SLushort us);
@@ -328,14 +338,37 @@ void sl_free_wave_file(SL_WAV_FILE** buf) {
     }
 }
 
-
 SLenum sl_init(void) {
-    // check endian status
     SLint n = 1;
     leSys = *(SLchar *)&n == 1;
 
+#ifdef __WIN32
+
+    CoInitializeEx(NULL, COINIT_MULTITHREADED);
+
+#elif defined(__linux__)
+
+#elif defined(__APPLE__) || defined(__MACH__)
+
+#endif
     return SL_SUCCESS;
 }
+
+SLenum sl_cleanup(void) {
+
+#ifdef __WIN32
+
+    CoUninitialize();
+
+#elif defined(__linux__)
+
+#elif defined(__APPLE__) || defined(__MACH__)
+
+#endif
+
+    return SL_SUCCESS;
+}
+
 
 SLenum ends_with(SLstr str, SLstr suffix) {
     size_t str_len = strlen(str);
