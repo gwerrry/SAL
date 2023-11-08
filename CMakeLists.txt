@@ -9,7 +9,7 @@ if ( NOT CMAKE_BUILD_TYPE )
     set( CMAKE_BUILD_TYPE Debug )
 endif()
 
-IF (WIN32)
+if (WIN32)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         message("Debug mode detected. Using MSVC MultiThreadedDebug...")
         set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebug")
@@ -17,7 +17,7 @@ IF (WIN32)
         message("Debug mode NOT detected. Using MSVC MultiThreaded...")
         set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
     endif()
-ENDIF()
+endif()
 
 # ------------------------------------------------------------------------------------------------
 # Set the standard requirements
