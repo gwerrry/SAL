@@ -144,8 +144,8 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     }
 
     // Allocate bufs
-    SLuchar* buffer4 = (SLuchar*)calloc(4, sizeof(SLuchar));
-    SLuchar* buffer2 = (SLuchar*)calloc(2, sizeof(SLuchar));
+    SLuchar buffer4[4];
+    SLuchar buffer2[2];
 
     buf = (SL_WAV_FILE*)malloc(sizeof(SL_WAV_FILE));
 
@@ -157,7 +157,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
 
     buf->dataChunk.waveformData = (SLshort*)malloc(1);
 
-    if (!buffer4 || !buffer2 || !buf->dataChunk.waveformData) {
+    if (!buf->dataChunk.waveformData) {
        ret = SL_FAIL;
        goto bufCleanup;
     }
@@ -173,6 +173,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     const SLuchar waveID_bytes[4] = {0x57, 0x41, 0x56, 0x45};
     const SLuchar fmtID_bytes [4] = {0x66, 0x6d, 0x74, 0x20};
     const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
+
 
     //read and validate chunkID
     fread(buf->descriptorChunk.chunkID, 1, 4, file);
@@ -312,6 +313,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         buf->dataChunk.waveformData[i] = sl_flip_endian_short(buf->dataChunk.waveformData[i]);
     }
 
+
     *wavBuf = buf;
 
     goto fileCleanup;
@@ -321,10 +323,9 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         buf->dataChunk.waveformData = NULL;
         free(buf);
         buf = NULL;
+        *wavBuf = NULL;
     fileCleanup:
         fclose(file);
-        free(buffer4);
-        free(buffer2);
     exit:
         return ret;
 }
@@ -342,41 +343,22 @@ SLenum sl_init(void) {
     SLint n = 1;
     leSys = *(SLchar *)&n == 1;
 
-#ifdef __WIN32
-
-    CoInitializeEx(NULL, COINIT_MULTITHREADED);
-
-#elif defined(__linux__)
-
-#elif defined(__APPLE__) || defined(__MACH__)
-
-#endif
     return SL_SUCCESS;
 }
 
 SLenum sl_cleanup(void) {
-
-#ifdef __WIN32
-
-    CoUninitialize();
-
-#elif defined(__linux__)
-
-#elif defined(__APPLE__) || defined(__MACH__)
-
-#endif
 
     return SL_SUCCESS;
 }
 
 
 SLenum ends_with(SLstr str, SLstr suffix) {
+
     size_t str_len = strlen(str);
     size_t suffix_len = strlen(suffix);
     if (suffix_len > str_len) {
         return SL_FAIL;
     }
-
     char sub[suffix_len];
     strncpy(sub, str + str_len - suffix_len, suffix_len);
     sub[suffix_len] = '\0';
