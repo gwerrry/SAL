@@ -9,7 +9,7 @@ extern "C" {
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-
+#include <limits.h>
 /**
  * Include platform specific headers
  */
@@ -36,7 +36,7 @@ extern "C" {
 #define SLuint   uint32_t
 #define SLenum   uint32_t
 #define SLllong  int64_t
-#define Slullong uint64_t
+#define SLullong uint64_t
 #define SLfloat float
 #define SLdouble double
 #define SLstr const char*
@@ -73,9 +73,6 @@ static SLbool sysEndianness;
 #define SL_INVALID_CHUNK_DATA_SIZE 60070
 #define SL_INVALID_CHUNK_DATA_DATA 60600
 
-
-
-
 #define SL_FAIL 66666
 
 #define BIG_ENDIAN 1
@@ -101,7 +98,9 @@ typedef struct {
 typedef struct {
     SLuchar subChunk2Id[4];
     SLuint subChunk2Size;
-    SLushort*  waveformData;
+    SLbool signedPCM;
+    SLuchar*  waveformData;
+    SLchar*  waveformData_signed;
 } SL_WAV_DATA;
 
 typedef struct WAV_FILE_DATA {
@@ -127,7 +126,7 @@ SLuint   sl_flip_endian_uint(SLuint ui);
 SLenum   sl_flip_endian_enum(SLenum e);
 SLfloat  sl_flip_endian_float(SLfloat f);
 SLdouble sl_flip_endian_double(SLdouble d);
-Slullong sl_flip_endian_ullong(Slullong ull);
+SLullong sl_flip_endian_ullong(SLullong ull);
 SLllong  sl_flip_endian_llong(SLllong ll);
 SLushort sl_buf_to_native_ushort(SLuchar* buf, SLuint bufLen);
 SLuint sl_buf_to_native_uint(SLuchar* buf, SLuint bufLen);
@@ -139,8 +138,7 @@ SLushort sl_ushort_as_little_endian(SLuchar* buf);
 
 SLbool   sl_uint_endianness(SLuint ui);
 SLbool   sl_ushort_endianness(SLushort us);
-SLuint   sl_uint_as_native_endianness(SLuint ui);
-SLushort sl_ushort_as_native_endianness(SLushort us);
+SLbool   sl_ullong_endianness(SLullong ull);
 
 // user must manage the memory of path. note this in docs
 SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
@@ -163,7 +161,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     }
 
     // try to open file
-    FILE* file = fopen(path, "r");
+    FILE* file = fopen(path, "rb");
     if (file == NULL) {
         ret = SL_FILE_ERROR;
         goto exit;
@@ -177,7 +175,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     }
 
     buf->dataChunk.waveformData = NULL;
-
+    buf->dataChunk.waveformData_signed = NULL;
     //
     // Constants here for some byte names and buffers.
     //
@@ -188,85 +186,149 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     const SLuchar fmtID_bytes [4] = {0x66, 0x6d, 0x74, 0x20};
     const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
 
-    Slullong bytesRead = 0;
+    SLullong bytesRead = 0;
 
     //read and validate chunkID
     bytesRead = fread(buf->descriptorChunk.chunkID, 1, 4, file);
-    if (bytesRead != 4) goto bufCleanupIWF;
+    if (bytesRead != 4) {
+        ret = SL_INVALID_CHUNK_DESCRIPTOR_ID;
+        goto bufCleanup;
+    }
 
     for (int i = 0; i < 4; ++i) {
-        if(buf->descriptorChunk.chunkID[i] != riffID_bytes[i]) goto bufCleanupIWF;
+        if(buf->descriptorChunk.chunkID[i] != riffID_bytes[i]) {
+            ret = SL_INVALID_CHUNK_DESCRIPTOR_ID;
+            goto bufCleanup;
+        }
     }
 
     //read and validate chunk size
     bytesRead = fread(buffer4, 1, 4, file);
-    if (bytesRead != 4) goto bufCleanupIWF;
+    if (bytesRead != 4) {
+        ret = SL_INVALID_CHUNK_DESCRIPTOR_SIZE;
+        goto bufCleanup;
+    }
     buf->descriptorChunk.chunkSize = sl_buf_to_native_uint(buffer4, 4);
-    if (buf->descriptorChunk.chunkSize == 0) goto bufCleanupIWF;
-
+    if (buf->descriptorChunk.chunkSize == 0) {
+        ret = SL_INVALID_CHUNK_DESCRIPTOR_SIZE;
+        goto bufCleanup;
+    }
 
     //read and validate wave format
     bytesRead = fread(buf->descriptorChunk.chunkFormat, 1, 4, file);
-    if (bytesRead != 4) goto bufCleanupIWF;
+    if (bytesRead != 4) {
+        ret = SL_INVALID_CHUNK_DESCRIPTOR_FORMAT;
+        goto bufCleanup;
+    }
 
     for (int i = 0; i < 4; ++i) {
-        if(buf->descriptorChunk.chunkFormat[i] != waveID_bytes[i]) goto bufCleanupIWF;
+        if(buf->descriptorChunk.chunkFormat[i] != waveID_bytes[i]) {
+            ret = SL_INVALID_CHUNK_DESCRIPTOR_FORMAT;
+            goto bufCleanup;
+        }
     }
 
     //read and validate fmt chunk id
-    fread(buf->formatChunk.subChunk1Id, 1, 4, file);
-    if (bytesRead != 4) goto bufCleanupIWF;
+    bytesRead = fread(buf->formatChunk.subChunk1Id, 1, 4, file);
+    if (bytesRead != 4) {
+        ret = SL_INVALID_CHUNK_FMT_ID;
+        goto bufCleanup;
+    }
 
     for (int i = 0; i < 4; ++i) {
         if(buf->formatChunk.subChunk1Id[i] != fmtID_bytes[i]) {
-            goto bufCleanupIWF;
+            ret = SL_INVALID_CHUNK_FMT_ID;
+            goto bufCleanup;
         }
     }
 
     //read and validate fmt chunk size
-    fread(buffer4, 1, 4, file);
-    if (bytesRead != 4) goto bufCleanupIWF;
+    bytesRead = fread(buffer4, 1, 4, file);
+    if (bytesRead != 4) {
+        ret = SL_INVALID_CHUNK_FMT_SIZE;
+        goto bufCleanup;
+    }
     buf->formatChunk.subChunk1Size = sl_buf_to_native_uint(buffer4, 4);
-    if (buf->formatChunk.subChunk1Size == 0) goto bufCleanupIWF;
+    if (buf->formatChunk.subChunk1Size == 0) {
+        ret = SL_INVALID_CHUNK_FMT_SIZE;
+        goto bufCleanup;
+    }
 
     //read and validate audio format. ensure PCM
-    fread(buffer2, 1, 2, file);
-    if (bytesRead != 2) goto bufCleanupIWF;
+    bytesRead = fread(buffer2, 1, 2, file);
+    if (bytesRead != 2) {
+        ret = SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
+        goto bufCleanup;
+    }
     buf->formatChunk.audioFormat = sl_buf_to_native_ushort(buffer2, 2);
-    if (buf->formatChunk.audioFormat != 1) goto bufCleanupIWF;
-
+    if (buf->formatChunk.audioFormat != 1) {
+        ret = SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
+        goto bufCleanup;
+    }
 
     //read and validate num channels.
-    fread(buffer2, 1, 2, file);
-    if (bytesRead != 2) goto bufCleanupIWF;
+    bytesRead = fread(buffer2, 1, 2, file);
+    if (bytesRead != 2) {
+        ret = SL_INVALID_CHUNK_FMT_CHANNELS;
+        goto bufCleanup;
+    }
     buf->formatChunk.numChannels = sl_buf_to_native_ushort(buffer2, 2);
-    if (buf->formatChunk.numChannels == 0) goto bufCleanupIWF;
+    if (buf->formatChunk.numChannels == 0) {
+        ret = SL_INVALID_CHUNK_FMT_CHANNELS;
+        goto bufCleanup;
+    }
 
     //read and validate sample rate
-    fread(buffer4, 1, 4, file);
-    if (bytesRead != 4) goto bufCleanupIWF;
+    bytesRead = fread(buffer4, 1, 4, file);
+    if (bytesRead != 4) {
+        ret = SL_INVALID_CHUNK_FMT_SAMPLE_RATE;
+        goto bufCleanup;
+    }
     buf->formatChunk.sampleRate = sl_buf_to_native_uint(buffer4, 4);
-    if (buf->formatChunk.sampleRate == 0) goto bufCleanupIWF;
-
+    if (buf->formatChunk.sampleRate == 0) {
+        ret = SL_INVALID_CHUNK_FMT_SAMPLE_RATE;
+        goto bufCleanup;
+    }
 
     //read and validate byte rate
-    fread(buffer4, 1, 4, file);
-    if (bytesRead != 4) goto bufCleanupIWF;
+    bytesRead = fread(buffer4, 1, 4, file);
+    if (bytesRead != 4) {
+        ret = SL_INVALID_CHUNK_FMT_BYTE_RATE;
+        goto bufCleanup;
+    }
     buf->formatChunk.byteRate = sl_buf_to_native_uint(buffer4, 4);
-    if (buf->formatChunk.byteRate == 0) goto bufCleanupIWF;
+    if (buf->formatChunk.byteRate == 0) {
+        ret = SL_INVALID_CHUNK_FMT_BYTE_RATE;
+        goto bufCleanup;
+    }
 
     //read and validate block align
-    fread(buffer2, 1, 2, file);
-    if (bytesRead != 2) goto bufCleanupIWF;
+    bytesRead = fread(buffer2, 1, 2, file);
+    if (bytesRead != 2) {
+        ret = SL_INVALID_CHUNK_FMT_BLOCK_ALIGN;
+        goto bufCleanup;
+    }
     buf->formatChunk.blockAlign = sl_buf_to_native_ushort(buffer2, 2);
-    if (buf->formatChunk.blockAlign == 0) goto bufCleanupIWF;
+    if (buf->formatChunk.blockAlign == 0) {
+        ret = SL_INVALID_CHUNK_FMT_BLOCK_ALIGN;
+        goto bufCleanup;
+    }
 
     //read and validate bits per sample
-    fread(buffer2, 1, 2, file);
-    if (bytesRead != 2) goto bufCleanupIWF;
+    buf->dataChunk.signedPCM = 0;
+    bytesRead = fread(buffer2, 1, 2, file);
+    if (bytesRead != 2) {
+        ret = SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
+        goto bufCleanup;
+    }
     buf->formatChunk.bitsPerSample = sl_buf_to_native_ushort(buffer2, 2);
-    if (buf->formatChunk.bitsPerSample == 0) goto bufCleanupIWF;
-
+    if (buf->formatChunk.bitsPerSample == 0) {
+        ret = SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
+        goto bufCleanup;
+    }
+    if(buf->formatChunk.bitsPerSample > 8) {
+        buf->dataChunk.signedPCM = 1;
+    }
 
     //keep reading until find data
     bytesRead = fread(buf->dataChunk.subChunk2Id, 1, 4, file);
@@ -274,7 +336,10 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
 
     while(bytesRead == 4) {
         // check if everything is valid
-        if (feof(file) || ferror(file)) goto bufCleanupIWF;
+        if (feof(file) || ferror(file)) {
+            ret = SL_INVALID_CHUNK_DATA_ID;
+            goto bufCleanup;
+        }
 
         // check if bytes match omg
         SLuint matchingBytes = 0;
@@ -285,10 +350,16 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         }
 
         // get size of that chunk :eyes:
-        fread(buffer4, 1, 4, file);
-        if (bytesRead != 4) goto bufCleanupIWF;
+        bytesRead = fread(buffer4, 1, 4, file);
+        if (bytesRead != 4) {
+            ret = SL_INVALID_CHUNK_DATA_SIZE;
+            goto bufCleanup;
+        }
         buf->dataChunk.subChunk2Size = sl_buf_to_native_uint(buffer4, 4);
-        if (buf->dataChunk.subChunk2Size == 0) goto bufCleanupIWF;
+        if (buf->dataChunk.subChunk2Size == 0) {
+            ret = SL_INVALID_CHUNK_DATA_SIZE;
+            goto bufCleanup;
+        }
 
         // check if found that data :smirk:
         if(matchingBytes == 4) {
@@ -298,44 +369,45 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
 
         // skip chunk and read next ID
         fseek(file, buf->dataChunk.subChunk2Size, SEEK_CUR);
-        fread(buf->dataChunk.subChunk2Id, 1, 4, file);
+        bytesRead = fread(buf->dataChunk.subChunk2Id, 1, 4, file);
     }
 
-
-    if(!found) goto bufCleanupIWF;
-
-
-    //validate samples
-    Slullong num_samples = (8 * buf->dataChunk.subChunk2Size) / (buf->formatChunk.numChannels * buf->formatChunk.bitsPerSample);
-    Slullong size_of_each_sample = (buf->formatChunk.numChannels * buf->formatChunk.bitsPerSample) / 8;
-    if (num_samples == 0 || size_of_each_sample == 0) goto bufCleanupIWF;
-
-
-    //read data
-    free(buf->dataChunk.waveformData);
-    buf->dataChunk.waveformData = malloc(num_samples * sizeof(SLshort));
-    if (!buf->dataChunk.waveformData) {
-        ret = SL_FAIL;
+    if(!found) {
+        ret = SL_INVALID_CHUNK_DATA_ID;
         goto bufCleanup;
     }
 
-    fread(buf->dataChunk.waveformData, size_of_each_sample, num_samples, file);
-    if (bytesRead != num_samples) goto bufCleanupIWF;
-    //ensure all the data is something the system recognizes
-    if(sl_ushort_endianness(buf->dataChunk.waveformData[0]) != sysEndianness) {
-        for (int i = 0; i < num_samples; i++) {
-            buf->dataChunk.waveformData[i] = sl_flip_endian_ushort(buf->dataChunk.waveformData[i]);
+    //alloc data
+    if(!buf->dataChunk.signedPCM) {
+        buf->dataChunk.waveformData = malloc(buf->dataChunk.subChunk2Size);
+        if (!buf->dataChunk.waveformData) {
+            ret = SL_FAIL;
+            goto bufCleanup;
         }
+        bytesRead = fread(buf->dataChunk.waveformData, 1, buf->dataChunk.subChunk2Size, file);
+    } else {
+        buf->dataChunk.waveformData_signed = malloc(buf->dataChunk.subChunk2Size);
+        if (!buf->dataChunk.waveformData_signed) {
+            ret = SL_FAIL;
+            goto bufCleanup;
+        }
+        bytesRead = fread(buf->dataChunk.waveformData_signed, 1, buf->dataChunk.subChunk2Size, file);
+    }
+
+    if (bytesRead != buf->dataChunk.subChunk2Size) {
+        ret = SL_INVALID_CHUNK_DATA_DATA;
+        goto bufCleanup;
     }
 
     *wavBuf = buf;
 
     goto fileCleanup;
 
-    bufCleanupIWF:
-        ret = SL_INVALID_WAVE_FORMAT;
     bufCleanup:
-        if(buf) free(buf->dataChunk.waveformData);
+        if(buf) {
+            free(buf->dataChunk.waveformData);
+            free(buf->dataChunk.waveformData_signed);
+        }
         buf->dataChunk.waveformData = NULL;
         free(buf);
         buf = NULL;
@@ -348,6 +420,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
 
 void sl_free_wave_file(SL_WAV_FILE** buf) {
     if(buf && *buf) {
+        free((*buf)->dataChunk.waveformData_signed);
         free((*buf)->dataChunk.waveformData);
         (*buf)->dataChunk.waveformData = NULL;
         free(*buf);
@@ -369,7 +442,6 @@ SLenum sl_cleanup(void) {
 }
 
 SLenum ends_with(SLstr str, SLstr suffix) {
-
     size_t str_len = strlen(str);
     size_t suffix_len = strlen(suffix);
     if (suffix_len > str_len) {
@@ -447,8 +519,8 @@ SLdouble sl_flip_endian_double(SLdouble d) {
     return swapped;
 }
 
-Slullong sl_flip_endian_ullong(Slullong ull) {
-    return (Slullong) (((ull >> 56) & 0x00000000000000ff) |
+SLullong sl_flip_endian_ullong(SLullong ull) {
+    return (SLullong) (((ull >> 56) & 0x00000000000000ff) |
                        ((ull >> 40) & 0x000000000000ff00) |
                        ((ull >> 24) & 0x0000000000ff0000) |
                        ((ull >> 8)  & 0x00000000ff000000) |
@@ -483,16 +555,13 @@ SLushort sl_buf_to_native_ushort(SLuchar* buf, SLuint bufLen) {
 }
 
 SLuint sl_buf_to_native_uint(SLuchar* buf, SLuint bufLen) {
-    //who needs comments, am i right?
     if(!buf || bufLen < 4) return 0;
 
     SLuint value = 0;
     if(sysEndianness == LITTLE_ENDIAN) {
-        if((unsigned char)buf[0] < (unsigned char)buf[3]) value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
-        else value = buf[3] | (buf[2] << 8) | (buf[1] << 16) | (buf[0] << 24);
+        value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
     } else {
-        if((unsigned char)buf[0] < (unsigned char)buf[3]) value = buf[3] | (buf[2] << 8) | (buf[1] << 16) | (buf[0] << 24);
-        else value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
+        value = buf[3] | (buf[2] << 8) | (buf[1] << 16) | (buf[0] << 24);
     }
     return value;
 }
@@ -512,25 +581,6 @@ SLushort sl_ushort_as_big_endian(SLuchar* buf) {
 SLushort sl_ushort_as_little_endian(SLuchar* buf) {
     return (SLushort)(buf[0] | (buf[1] << 8));
 }
-
-SLbool sl_uint_endianness(SLuint ui) {
-    char* c = (char*)&ui;
-    return *c > *(c + sizeof(SLuint) - 1) ? BIG_ENDIAN : LITTLE_ENDIAN;
-}
-
-SLbool sl_ushort_endianness(SLushort us) {
-    char* c = (char*)&us;
-    return *c > *(c + sizeof(SLushort) - 1) ? BIG_ENDIAN : LITTLE_ENDIAN;
-}
-
-SLuint sl_uint_as_native_endianness(SLuint ui) {
-    return sl_uint_endianness(ui) == sysEndianness ? ui : sl_flip_endian_uint(ui);
-}
-
-SLushort sl_ushort_as_native_endianness(SLushort us) {
-    return sl_ushort_endianness(us) == sysEndianness ? us : sl_flip_endian_ushort(us);
-}
-
 #ifdef __cplusplus
 }
 #endif // __cplusplus

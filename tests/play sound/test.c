@@ -26,6 +26,7 @@ int main(void) {
 
     if(out == SL_SUCCESS && buf) {
         printf("Successfully parsed WAVE file at \"%s\".\n", input);
+
         sl_free_wave_file(&buf);
     } else {
         printf("Failed to parse WAVE file at \"%s\".\n", input);
