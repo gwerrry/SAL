@@ -119,26 +119,9 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf);
 void sl_free_wave_file(SL_WAV_FILE** buf);
 SLenum ends_with(SLstr str, SLstr suffix);
 
-SLshort  sl_flip_endian_short(SLshort s);
-SLushort sl_flip_endian_ushort(SLushort us);
-SLint    sl_flip_endian_int(SLint i);
 SLuint   sl_flip_endian_uint(SLuint ui);
-SLenum   sl_flip_endian_enum(SLenum e);
-SLfloat  sl_flip_endian_float(SLfloat f);
-SLdouble sl_flip_endian_double(SLdouble d);
-SLullong sl_flip_endian_ullong(SLullong ull);
-SLllong  sl_flip_endian_llong(SLllong ll);
 SLushort sl_buf_to_native_ushort(SLuchar* buf, SLuint bufLen);
 SLuint sl_buf_to_native_uint(SLuchar* buf, SLuint bufLen);
-
-SLuint   sl_uint_as_big_endian(SLuchar* buf);
-SLuint   sl_uint_as_little_endian(SLuchar* buf);
-SLushort sl_ushort_as_big_endian(SLuchar* buf);
-SLushort sl_ushort_as_little_endian(SLuchar* buf);
-
-SLbool   sl_uint_endianness(SLuint ui);
-SLbool   sl_ushort_endianness(SLushort us);
-SLbool   sl_ullong_endianness(SLullong ull);
 
 // user must manage the memory of path. note this in docs
 SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
@@ -454,91 +437,12 @@ SLenum ends_with(SLstr str, SLstr suffix) {
     return strcmp(suffix, sub) == 0 ? SL_SUCCESS : SL_FAIL;
 }
 
-SLshort sl_flip_endian_short(SLshort s) {
-    // simple bitwise stuff to flip the endianness
-    return (s >> 8) | (s << 8);
-}
-
-SLushort sl_flip_endian_ushort(SLushort us) {
-    // simple bitwise stuff to flip the endianness
-    return (us >> 8) | (us << 8);
-}
-
-SLint sl_flip_endian_int(SLint i) {
-    // simple bitwise stuff to flip the endianness
-    return ((i >> 24) & 0xff) |
-           ((i << 8) & 0xff0000) |
-           ((i >> 8) & 0xff00) |
-           ((i << 24) & 0xff000000);
-}
-
 SLuint sl_flip_endian_uint(SLuint ui) {
     // simple bitwise stuff to flip the endianness
     return ((ui >> 24) & 0xff) |
            ((ui << 8) & 0xff0000) |
            ((ui >> 8) & 0xff00) |
            ((ui << 24) & 0xff000000);
-}
-
-SLenum sl_flip_endian_enum(SLenum e) {
-    return sl_flip_endian_uint(e);
-}
-
-SLfloat sl_flip_endian_float(SLfloat f) {
-    // i love c because of this right here
-    unsigned long num_int;
-    memcpy(&num_int, &f, sizeof(float));
-
-    // simple bitwise stuff to flip the endianness
-    unsigned long swapped_int = ((num_int >> 24) & 0xff) |
-                                ((num_int << 8) & 0xff0000) |
-                                ((num_int >> 8) & 0xff00) |
-                                ((num_int << 24) & 0xff000000);
-    float swapped;
-    memcpy(&swapped, &swapped_int, sizeof(float));
-    return swapped;
-}
-
-SLdouble sl_flip_endian_double(SLdouble d) {
-    // i love c because of this right here
-    uint64_t num_int;
-    memcpy(&num_int, &d, sizeof(double));
-
-    // simple bitwise stuff to flip the endianness
-    uint64_t swapped_int = ((num_int >> 56) & 0x00000000000000ff) |
-                           ((num_int >> 40) & 0x000000000000ff00) |
-                           ((num_int >> 24) & 0x0000000000ff0000) |
-                           ((num_int >> 8)  & 0x00000000ff000000) |
-                           ((num_int << 8)  & 0x000000ff00000000) |
-                           ((num_int << 24) & 0x0000ff0000000000) |
-                           ((num_int << 40) & 0x00ff000000000000) |
-                           ((num_int << 56) & 0xff00000000000000);
-
-    double swapped;
-    memcpy(&swapped, &swapped_int, sizeof(double));
-    return swapped;
-}
-
-SLullong sl_flip_endian_ullong(SLullong ull) {
-    return (SLullong) (((ull >> 56) & 0x00000000000000ff) |
-                       ((ull >> 40) & 0x000000000000ff00) |
-                       ((ull >> 24) & 0x0000000000ff0000) |
-                       ((ull >> 8)  & 0x00000000ff000000) |
-                       ((ull << 8)  & 0x000000ff00000000) |
-                       ((ull << 24) & 0x0000ff0000000000) |
-                       ((ull << 40) & 0x00ff000000000000) |
-                       ((ull << 56) & 0xff00000000000000));
-}
-
-SLllong sl_flip_endian_llong(SLllong ll) {
-    return (SLllong) (((ll >> 56) & 0x00000000000000ff) |
-                      ((ll >> 40) & 0x000000000000ff00) |
-                      ((ll >> 24) & 0x0000000000ff0000) |
-                      ((ll >> 8)  & 0x00000000ff000000) |
-                      ((ll << 8)  & 0x000000ff00000000) |
-                      ((ll << 24) & 0x0000ff0000000000) |
-                      ((ll << 40) & 0x00ff000000000000) |
-                      ((ll << 56) & 0xff00000000000000));
 }
 
 SLushort sl_buf_to_native_ushort(SLuchar* buf, SLuint bufLen) {
@@ -566,21 +470,6 @@ SLuint sl_buf_to_native_uint(SLuchar* buf, SLuint bufLen) {
     return value;
 }
 
-SLuint sl_uint_as_big_endian(SLuchar* buf) {
-    return (SLint)((buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3]);
-}
-
-SLuint sl_uint_as_little_endian(SLuchar* buf) {
-    return (SLint)(buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24));
-}
-
-SLushort sl_ushort_as_big_endian(SLuchar* buf) {
-    return (SLushort)((buf[0] << 8) | buf[1]);
-}
-
-SLushort sl_ushort_as_little_endian(SLuchar* buf) {
-    return (SLushort)(buf[0] | (buf[1] << 8));
-}
 #ifdef __cplusplus
 }
 #endif // __cplusplus
