@@ -3,7 +3,6 @@
 #include <windows.h>
 #include <audioclient.h>
 
-
 int main(void) {
     sl_init();
 
