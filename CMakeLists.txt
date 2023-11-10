@@ -28,6 +28,6 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(${PROJECT_NAME}
-        include/sal.h
-        "tests/play sound/test.c"
+        sal.h
+        "test.c"
 )
