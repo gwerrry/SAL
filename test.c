@@ -1,4 +1,4 @@
-#include "../../include/sal.h"
+#include "sal.h"
 
 #include <windows.h>
 #include <audioclient.h>

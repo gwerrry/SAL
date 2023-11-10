@@ -40,6 +40,7 @@ extern "C" {
 #define SLfloat float
 #define SLdouble double
 #define SLstr const char*
+
 /**
  * Very important. Tells us if the system is Little Endian or Big Endian.
  */
@@ -53,9 +54,6 @@ static SLbool sysEndianness;
 #define SL_INVALID_VALUE 57843
 #define SL_FILE_ERROR 24354
 
-#define SL_INVALID_WAVE_FORMAT 59023
-
-//NEW ERROR CODES
 #define SL_INVALID_CHUNK_DESCRIPTOR_ID 40000
 #define SL_INVALID_CHUNK_DESCRIPTOR_SIZE 41111
 #define SL_INVALID_CHUNK_DESCRIPTOR_FORMAT 42222
