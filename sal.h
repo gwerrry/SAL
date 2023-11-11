@@ -10,11 +10,12 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-///////////////////////////////////////////////////////////////////////
-///////////////// Include Platform Specific Headers ///////////////////
-///////////////////////////////////////////////////////////////////////
-#ifdef __WIN32
-
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////// Include Platform Specific Headers and define some platform specific things. ///////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef _WIN32
+//i know what im doing microsoft pls leave me alone
+#pragma warning(disable : 4996)
 #elif defined(__linux__)
 
 #elif defined(__APPLE__) || defined(__MACH__)
@@ -502,11 +503,12 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     goto fileCleanup;
 
     bufCleanup:
-        if(buf) {
+        if (buf) {
             free(buf->dataChunk.waveformData);
             free(buf->dataChunk.waveformData_signed);
+            buf->dataChunk.waveformData = NULL;
+            buf->dataChunk.waveformData_signed = NULL;
         }
-        buf->dataChunk.waveformData = NULL;
         free(buf);
         buf = NULL;
         *wavBuf = NULL;
@@ -546,11 +548,16 @@ SLenum ends_with(SLstr str, SLstr suffix) {
     if (suffix_len > str_len) {
         return SL_FAIL;
     }
-    char sub[suffix_len];
-    strncpy(sub, str + str_len - suffix_len, suffix_len);
+    char* sub = (char*)malloc((suffix_len + 1) * sizeof(char));
+    if (!sub) return SL_FAIL;
+    memcpy(sub, str + str_len - suffix_len, suffix_len);
     sub[suffix_len] = '\0';
 
-    return strcmp(suffix, sub) == 0 ? SL_SUCCESS : SL_FAIL;
+    SLenum res = strcmp(suffix, sub) == 0 ? SL_SUCCESS : SL_FAIL;
+
+    free(sub);
+
+    return res;
 }
 
 SLushort sl_buf_to_native_ushort(SLuchar* buf, SLuint bufLen) {
