@@ -9,24 +9,21 @@ extern "C" {
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <limits.h>
-/**
- * Include platform specific headers
- */
+
+///////////////////////////////////////////////////////////////////////
+///////////////// Include Platform Specific Headers ///////////////////
+///////////////////////////////////////////////////////////////////////
 #ifdef __WIN32
-    #include <combaseapi.h>
-    #include <mmdeviceapi.h>
-    #include <audioclient.h>
-    #include <audiopolicy.h>
+
 #elif defined(__linux__)
 
 #elif defined(__APPLE__) || defined(__MACH__)
 
 #endif
 
-/**
- * Type definitions
- */
+//////////////////////////////////////////////////////
+///////////////// Type definitions ///////////////////
+//////////////////////////////////////////////////////
 #define SLbool   int8_t
 #define SLchar   int8_t
 #define SLuchar  uint8_t
@@ -41,14 +38,15 @@ extern "C" {
 #define SLdouble double
 #define SLstr const char*
 
-/**
- * Very important. Tells us if the system is Little Endian or Big Endian.
- */
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////// Tells us the native endian-ness of the system so we don't have to convert every time. ///////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static SLbool sysEndianness;
 
-/**
- * ERROR/RETURN CODE DEFINITIONS
-*/
+//////////////////////////////////////////////////////////////////////////////
+///////////////// Wave File Parser Return Code Definitions ///////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 #define SL_SUCCESS 69420
 #define SL_PARSE_FAIL 34343
 #define SL_INVALID_VALUE 57843
@@ -73,6 +71,10 @@ static SLbool sysEndianness;
 
 #define SL_FAIL 66666
 
+///////////////////////////////////////////////////////////////////
+///////////////// Wave File Parser Useful types ///////////////////
+///////////////////////////////////////////////////////////////////
+
 #define BIG_ENDIAN 1
 #define LITTLE_ENDIAN 0
 
@@ -83,6 +85,40 @@ static SLbool sysEndianness;
 #define SL_FLOAT_32PCM 5
 #define SL_FLOAT_64PCM 6
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////                                                                          The Wave file format                                                                        //////////////
+//////////////                          Thanks to http://soundfile.sapp.org/doc/WaveFormat/ and https://wavefilegem.com/how_wave_files_work.html for this.                          //////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////                                                                          WAVE Descriptor Chunk                                                                       //////////////
+//////////////                 Big Endian Chunk ID contains the letters "RIFF" in ASCII form. It can be something else like RIFX, but this parser only support RIFF.                //////////////
+//////////////                                                 Little Endian Chunk Size contains the size of the rest of the chunk.                                                 //////////////
+//////////////                          Big Endian Format contains WAVE. I don't know if this can be anything else, but this parser will only support WAVE.                         //////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////                                                                            WAVE Format Chunk                                                                         //////////////
+//////////////                                                   Big Endian Chunk ID contains the letters "fmt " (with the space).                                                  //////////////
+//////////////                                                  Little Endian Chunk Size contains the size of the rest of the chunk.                                                //////////////
+//////////////                           Little Endian Audio Format contains the format of the audio. 1 for pcm, 3 for float, and there's probably a lot more.                      //////////////
+//////////////                                                   Little Endian Number of Channels contains the number of channels.                                                  //////////////
+//////////////                                                   Little Endian Sample rate contains the sample rate of the audio.                                                   //////////////
+//////////////                                                     Little Endian Byte rate contains the byte rate of the audio.                                                     //////////////
+//////////////                                       Little Endian Block Align contains number of bytes for one sample including all samples.                                       //////////////
+//////////////                                                   Little Endian Bits Per Sample contains how many bits per sample.                                                   //////////////
+//////////////             Little Endian ExtraParamSize contains size of extra params. doesn't exist for PCM (i think. I haven't seen it in what this parser supports).             //////////////
+//////////////                                                                              Extra params                                                                            //////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////                                                                             WAVE Data Chunk                                                                          //////////////
+//////////////                                                               Big Endian Chunk ID contains letters "data".                                                           //////////////
+//////////////                                                   Little Endian Chunk Suze contains the size of the rest of the chunk.                                               //////////////
+//////////////                                                                          Little Endian Data                                                                          //////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////                                                                                 Notes                                                                                //////////////
+//////////////                                           I'm pretty sure RIFX makes it so all the little endian numbers are in big endian form.                                     //////////////
+//////////////    I might add support for more audio formats, but it shouldn't affect performance heavily, as it would just be if statements and potentially a few more parameters. //////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////
+///////////////// Wave File Parser Struct Definitions ///////////////////
+/////////////////////////////////////////////////////////////////////////
 typedef struct {
     SLuchar chunkID[4];
     SLuint chunkSize;
@@ -115,21 +151,68 @@ typedef struct WAV_FILE_DATA {
     SL_WAV_DATA dataChunk;
 } SL_WAV_FILE;
 
+///////////////////////////////////////////////////////////////////////////
+///////////////// Wave File Parser Function Definitions ///////////////////
+///////////////////////////////////////////////////////////////////////////
+
 /**
- * Functions
+ * @brief Sound library init function. You MUST call this even when using the wave file parser.
+ * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
  */
 SLenum sl_init(void);
+
+/**
+ * @brief Sound library cleanup function. You should call this when your app execution ends.
+ * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
+ */
 SLenum sl_cleanup(void);
 
+/**
+ * @brief Parses wave file at the path.
+ * For more information on types of WAVE files supported, go to the Github.
+ * @param path - Path of WAVE file to parse.
+ * @param wavBuf - Buffer for the WAVE file.
+ * @return SL_SUCCESS if succeeded. There are many useful return codes documented on the Github so you can debug anything else that happens.
+ */
 SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf);
+
+/**
+ * @brief Frees the memory associated with the WAVE file.
+ * Also sets the buf to NULL.
+ * @param buf - Buffer of WAVE file to free.
+ */
 void sl_free_wave_file(SL_WAV_FILE** buf);
+
+/**
+ * @brief This is just for checking if the file provided in the parser ends with ".wav".
+ * That's it.
+ * You could use it for anything else, but up that's to you.
+ * @param str - String to check.
+ * @param suffix - Suffix to check for.
+ * @return SL_SUCCESS if it worked and SL_FAIL if it failed.
+ */
 SLenum ends_with(SLstr str, SLstr suffix);
 
-SLuint   sl_flip_endian_uint(SLuint ui);
+/**
+ * @brief Converts a SLuchar* buf to a SLushort, but takes into account the system's native endian-ness.
+ * @param buf - Buffer to convert. This MUST be at least 2 bytes and valid.
+ * @param bufLen - Length of SLuchar buffer to convert.
+ * @return The value of the buffer represented as a SLushort taking into account the system's native endian-ness. Returns zero if it fails. I know it's not helpful, but you can debug!
+ */
 SLushort sl_buf_to_native_ushort(SLuchar* buf, SLuint bufLen);
+
+/**
+ * @brief Converts a SLuchar* buf to a SLuint, but takes into account the system's native endian-ness.
+ * @param buf - Buffer to convert. This MUST be at least 4 bytes and valid.
+ * @param bufLen - Length of SLuchar buffer to convert.
+ * @return The value of the buffer represented as a SLuint taking into account the system's native endian-ness. Returns zero if it fails. I know it's not helpful, but you can debug!
+ */
 SLuint sl_buf_to_native_uint(SLuchar* buf, SLuint bufLen);
 
-// user must manage the memory of path. note this in docs
+///////////////////////////////////////////////////////////////////////////////
+///////////////// Wave File Parser Function Implementations ///////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     SLenum ret = SL_SUCCESS;
 
@@ -438,6 +521,7 @@ void sl_free_wave_file(SL_WAV_FILE** buf) {
         free((*buf)->dataChunk.waveformData_signed);
         free((*buf)->dataChunk.waveformData);
         (*buf)->dataChunk.waveformData = NULL;
+        (*buf)->dataChunk.waveformData_signed = NULL;
         free(*buf);
         *buf = NULL;
     }
@@ -467,14 +551,6 @@ SLenum ends_with(SLstr str, SLstr suffix) {
     sub[suffix_len] = '\0';
 
     return strcmp(suffix, sub) == 0 ? SL_SUCCESS : SL_FAIL;
-}
-
-SLuint sl_flip_endian_uint(SLuint ui) {
-    // simple bitwise stuff to flip the endianness
-    return ((ui >> 24) & 0xff) |
-           ((ui << 8) & 0xff0000) |
-           ((ui >> 8) & 0xff00) |
-           ((ui << 24) & 0xff000000);
 }
 
 SLushort sl_buf_to_native_ushort(SLuchar* buf, SLuint bufLen) {
