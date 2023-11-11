@@ -76,6 +76,13 @@ static SLbool sysEndianness;
 #define BIG_ENDIAN 1
 #define LITTLE_ENDIAN 0
 
+#define SL_UNSIGNED_8PCM 1
+#define SL_SIGNED_16PCM 2
+#define SL_SIGNED_24PCM 3
+#define SL_SIGNED_32PCM 4
+#define SL_FLOAT_32PCM 5
+#define SL_FLOAT_64PCM 6
+
 typedef struct {
     SLuchar chunkID[4];
     SLuint chunkSize;
@@ -91,12 +98,13 @@ typedef struct {
     SLuint byteRate;
     SLushort blockAlign;
     SLushort bitsPerSample;
+    SLushort extensionSize;
 } SL_WAV_FMT;
 
 typedef struct {
     SLuchar subChunk2Id[4];
     SLuint subChunk2Size;
-    SLbool signedPCM;
+    SLenum pcmType;
     SLuchar*  waveformData;
     SLchar*  waveformData_signed;
 } SL_WAV_DATA;
@@ -235,17 +243,13 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         goto bufCleanup;
     }
 
-    //read and validate audio format. ensure PCM
+    //read only. audio format is verified later when parsing bits per sample
     bytesRead = fread(buffer2, 1, 2, file);
     if (bytesRead != 2) {
         ret = SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
         goto bufCleanup;
     }
     buf->formatChunk.audioFormat = sl_buf_to_native_ushort(buffer2, 2);
-    if (buf->formatChunk.audioFormat != 1) {
-        ret = SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
-        goto bufCleanup;
-    }
 
     //read and validate num channels.
     bytesRead = fread(buffer2, 1, 2, file);
@@ -296,19 +300,49 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     }
 
     //read and validate bits per sample
-    buf->dataChunk.signedPCM = 0;
     bytesRead = fread(buffer2, 1, 2, file);
     if (bytesRead != 2) {
         ret = SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
         goto bufCleanup;
     }
     buf->formatChunk.bitsPerSample = sl_buf_to_native_ushort(buffer2, 2);
-    if (buf->formatChunk.bitsPerSample == 0) {
-        ret = SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
+    buf->dataChunk.pcmType = 0;
+    buf->formatChunk.extensionSize = 0;
+    if(buf->formatChunk.audioFormat == 1) {
+        switch (buf->formatChunk.bitsPerSample) {
+            case 8:
+                buf->dataChunk.pcmType = SL_UNSIGNED_8PCM;
+                break;
+            case 16:
+                buf->dataChunk.pcmType = SL_SIGNED_16PCM;
+                break;
+            case 24:
+                buf->dataChunk.pcmType = SL_SIGNED_24PCM;
+                break;
+            case 32:
+                buf->dataChunk.pcmType = SL_SIGNED_32PCM;
+                break;
+            default: break;
+        }
+    } else if (buf->formatChunk.audioFormat == 3) {
+        switch (buf->formatChunk.bitsPerSample) {
+            case 32:
+                buf->dataChunk.pcmType = SL_FLOAT_32PCM;
+                break;
+            case 64:
+                buf->dataChunk.pcmType = SL_FLOAT_64PCM;
+                break;
+            default: break;
+        }
+        //its pcm so we dont have to do anything with extension size
+    } else {
+        ret = SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
         goto bufCleanup;
     }
-    if(buf->formatChunk.bitsPerSample > 8) {
-        buf->dataChunk.signedPCM = 1;
+
+    if (buf->dataChunk.pcmType == 0) {
+        ret = SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
+        goto bufCleanup;
     }
 
     //keep reading until find data
@@ -359,7 +393,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     }
 
     //alloc data
-    if(!buf->dataChunk.signedPCM) {
+    if(buf->dataChunk.pcmType == SL_UNSIGNED_8PCM) {
         buf->dataChunk.waveformData = malloc(buf->dataChunk.subChunk2Size);
         if (!buf->dataChunk.waveformData) {
             ret = SL_FAIL;
