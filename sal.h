@@ -49,28 +49,28 @@ static SLbool sysEndianness;
 //////////////////////////////////////////////////////////////////////////////
 
 #define SL_SUCCESS 69420
-#define SL_PARSE_FAIL 34343
-#define SL_INVALID_VALUE 57843
-#define SL_FILE_ERROR 24354
-
-#define SL_INVALID_CHUNK_DESCRIPTOR_ID 40000
-#define SL_INVALID_CHUNK_DESCRIPTOR_SIZE 41111
-#define SL_INVALID_CHUNK_DESCRIPTOR_FORMAT 42222
-
-#define SL_INVALID_CHUNK_FMT_ID 50000
-#define SL_INVALID_CHUNK_FMT_SIZE 53010
-#define SL_INVALID_CHUNK_FMT_AUDIO_FORMAT 50190
-#define SL_INVALID_CHUNK_FMT_CHANNELS 51600
-#define SL_INVALID_CHUNK_FMT_SAMPLE_RATE 55021
-#define SL_INVALID_CHUNK_FMT_BYTE_RATE 50205
-#define SL_INVALID_CHUNK_FMT_BLOCK_ALIGN 52008
-#define SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE 50321
-
-#define SL_INVALID_CHUNK_DATA_ID 60000
-#define SL_INVALID_CHUNK_DATA_SIZE 60070
-#define SL_INVALID_CHUNK_DATA_DATA 60600
 
 #define SL_FAIL 66666
+#define SL_INVALID_VALUE 61616
+#define SL_FILE_ERROR 62636
+
+#define SL_INVALID_CHUNK_DESCRIPTOR_ID 10000
+#define SL_INVALID_CHUNK_DESCRIPTOR_SIZE 11111
+#define SL_INVALID_CHUNK_DESCRIPTOR_FORMAT 12222
+
+#define SL_INVALID_CHUNK_FMT_ID 20000
+#define SL_INVALID_CHUNK_FMT_SIZE 23010
+#define SL_INVALID_CHUNK_FMT_AUDIO_FORMAT 20190
+#define SL_INVALID_CHUNK_FMT_CHANNELS 21600
+#define SL_INVALID_CHUNK_FMT_SAMPLE_RATE 25021
+#define SL_INVALID_CHUNK_FMT_BYTE_RATE 20205
+#define SL_INVALID_CHUNK_FMT_BLOCK_ALIGN 22008
+#define SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE 20321
+
+#define SL_INVALID_CHUNK_DATA_ID 30000
+#define SL_INVALID_CHUNK_DATA_SIZE 30777
+#define SL_INVALID_CHUNK_DATA_DATA 30666
+
 
 ///////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Useful types ///////////////////
@@ -229,7 +229,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
 
     //ensures that this file we are reading is a wave file-or at least ends with it
     if (ends_with(path, ".wav") == SL_FAIL) {
-        ret = SL_PARSE_FAIL;
+        ret = SL_FILE_ERROR;
         goto exit;
     }
 
@@ -247,10 +247,8 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         goto bufCleanup;
     }
 
-    buf->dataChunk.waveformData = NULL;
-    buf->dataChunk.waveformData_signed = NULL;
     //
-    // Constants here for some byte names and buffers.
+    // Define and assign some stuff here.
     //
     SLuchar buffer4[4];
     SLuchar buffer2[2];
@@ -260,6 +258,11 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
 
     SLullong bytesRead = 0;
+    SLint found = 0;
+    buf->dataChunk.pcmType = 0;
+    buf->formatChunk.extensionSize = 0;
+    buf->dataChunk.waveformData = NULL;
+    buf->dataChunk.waveformData_signed = NULL;
 
     //read and validate chunkID
     bytesRead = fread(buf->descriptorChunk.chunkID, 1, 4, file);
@@ -390,8 +393,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         goto bufCleanup;
     }
     buf->formatChunk.bitsPerSample = sl_buf_to_native_ushort(buffer2, 2);
-    buf->dataChunk.pcmType = 0;
-    buf->formatChunk.extensionSize = 0;
     if(buf->formatChunk.audioFormat == 1) {
         switch (buf->formatChunk.bitsPerSample) {
             case 8:
@@ -431,7 +432,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
 
     //keep reading until find data
     bytesRead = fread(buf->dataChunk.subChunk2Id, 1, 4, file);
-    int found = 0;
 
     while(bytesRead == 4) {
         // check if everything is valid
