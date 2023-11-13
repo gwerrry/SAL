@@ -222,15 +222,16 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     SLuchar buffer4[4];
     SLuchar buffer2[2];
     const SLuchar riffID_bytes[4] = {0x52, 0x49, 0x46, 0x46};
+    const SLuchar rifxID_bytes[4] = {0x52, 0x49, 0x46, 0x58};
     const SLuchar waveID_bytes[4] = {0x57, 0x41, 0x56, 0x45};
     const SLuchar fmtID_bytes [4] = {0x66, 0x6d, 0x74, 0x20};
     const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
 
     SLullong blocksRead = 0;
-    SLint found = 0;
-    SLint foundFmt = 0;
-    SLint foundData = 0;
-
+    SLbool found = 0;
+    SLbool foundFmt = 0;
+    SLbool foundData = 0;
+    SLbool usingRIFX = 0;
     // this is so everything looks nice i dont feel like doing (*wavBuf) everytime i want to do anything
     SL_WAV_FILE* buf = NULL;
     *wavBuf = NULL;
@@ -272,7 +273,13 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
 
     //read and validate chunkID
     blocksRead = fread(buf->descriptorChunk.descriptorId, 4, 1, file);
-    if (!blocksRead || memcmp(buf->descriptorChunk.descriptorId, riffID_bytes, 4) != 0) {
+    if (!blocksRead) {
+        ret = SL_INVALID_CHUNK_DESCRIPTOR_ID;
+        goto bufCleanup;
+    }
+    else if (memcmp(buf->descriptorChunk.descriptorId, riffID_bytes, 4) != 0) {}
+    else if (memcmp(buf->descriptorChunk.descriptorId, rifxID_bytes, 4) != 0) usingRIFX = 1;
+    else {
         ret = SL_INVALID_CHUNK_DESCRIPTOR_ID;
         goto bufCleanup;
     }
@@ -432,7 +439,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         else if(!foundData && memcmp(buffer4, dataID_bytes, 4) == 0) {
             foundMatch = 1;
             foundData = 1;
-            //parse format and put id in format
 
             //store data id
             memcpy(buf->dataChunk.dataId, buffer4, 4);
@@ -497,18 +503,40 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         goto bufCleanup;
     }
 
+    //TODO test this signed and unsigned when we play sounds because in theory we shouldnt have to wonder about the sign bits
     //copy data into buf
     if(buf->dataChunk.pcmType == SL_UNSIGNED_8PCM) {
         buf->dataChunk.waveformData = malloc(buf->dataChunk.subChunk2Size);
-        memcpy(buf->dataChunk.waveformData, temp_data, buf->dataChunk.subChunk2Size);
+        if(!usingRIFX) memcpy(buf->dataChunk.waveformData, temp_data, buf->dataChunk.subChunk2Size);
+        else {
+            //memcpy... BUT IN REVERSE?!?!
+            SLullong len = buf->dataChunk.subChunk2Size;
+            SLuchar *d = buf->dataChunk.waveformData + len - 1;
+            const SLuchar *s = (SLuchar*)temp_data;
+            while (len--) *d-- = *s++;
+        }
     } else {
         buf->dataChunk.waveformData_signed = malloc(buf->dataChunk.subChunk2Size);
-        memcpy(buf->dataChunk.waveformData, temp_data, buf->dataChunk.subChunk2Size);
+        if(!usingRIFX) memcpy(buf->dataChunk.waveformData_signed, temp_data, buf->dataChunk.subChunk2Size);
+        else {
+            //memcpy... BUT IN REVERSE?!?!
+            SLullong len = buf->dataChunk.subChunk2Size;
+            SLchar *d = buf->dataChunk.waveformData_signed + len - 1;
+            const SLchar *s = (SLchar*)temp_data;
+            while (len--) *d-- = *s++;
+        }
     }
+
+
+    free(temp_data);
 
     *wavBuf = buf;
 
-    goto fileCleanup;
+    if (buf->dataChunk.waveformData_signed || buf->dataChunk.waveformData) goto fileCleanup;
+    else {
+        ret = SL_FAIL;
+        goto bufCleanup;
+    }
 
     bufCleanup:
         if (buf) {
