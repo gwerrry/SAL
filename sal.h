@@ -53,12 +53,13 @@ static SLbool sysEndianness;
 #define SL_FAIL 66666
 #define SL_INVALID_VALUE 61616
 #define SL_FILE_ERROR 62636
+#define SL_INVALID_WAVE_FORMAT 63293
 
 #define SL_INVALID_CHUNK_DESCRIPTOR_ID 10000
 #define SL_INVALID_CHUNK_DESCRIPTOR_SIZE 11111
 #define SL_INVALID_CHUNK_DESCRIPTOR_FORMAT 12222
 
-#define SL_INVALID_CHUNK_FMT_ID 20000
+#define SL_CHUNK_FORMAT_NOT_FOUND 20000
 #define SL_INVALID_CHUNK_FMT_SIZE 23010
 #define SL_INVALID_CHUNK_FMT_AUDIO_FORMAT 20190
 #define SL_INVALID_CHUNK_FMT_CHANNELS 21600
@@ -67,7 +68,7 @@ static SLbool sysEndianness;
 #define SL_INVALID_CHUNK_FMT_BLOCK_ALIGN 22008
 #define SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE 20321
 
-#define SL_INVALID_CHUNK_DATA_ID 30000
+#define SL_CHUNK_DATA_NOT_FOUND 30000
 #define SL_INVALID_CHUNK_DATA_SIZE 30777
 #define SL_INVALID_CHUNK_DATA_DATA 30666
 
@@ -122,13 +123,13 @@ static SLbool sysEndianness;
 /////////////////////////////////////////////////////////////////////////
 
 typedef struct sl_wav_descriptor {
-    SLuchar chunkID[4];
+    SLuchar descriptorId[4];
     SLuint chunkSize;
     SLuchar chunkFormat[4];
 } SL_WAV_DESCRIPTOR;
 
 typedef struct sl_wav_fmt {
-    SLuchar subChunk1Id[4];
+    SLuchar fmtId[4];
     SLuint subChunk1Size;
     SLushort audioFormat;
     SLushort numChannels;
@@ -140,7 +141,7 @@ typedef struct sl_wav_fmt {
 } SL_WAV_FMT;
 
 typedef struct sl_wav_data {
-    SLuchar subChunk2Id[4];
+    SLuchar dataId[4];
     SLuint subChunk2Size;
     SLenum pcmType;
     SLuchar*  waveformData;
@@ -215,9 +216,20 @@ SLuint sl_buf_to_native_uint(SLuchar* buf, SLuint bufLen);
 ///////////////// Wave File Parser Function Implementations ///////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-//TODO fully support the finding of sub chunks. (fmt can be in a different spot and we need to acount for that)
 SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     SLenum ret = SL_SUCCESS;
+
+    SLuchar buffer4[4];
+    SLuchar buffer2[2];
+    const SLuchar riffID_bytes[4] = {0x52, 0x49, 0x46, 0x46};
+    const SLuchar waveID_bytes[4] = {0x57, 0x41, 0x56, 0x45};
+    const SLuchar fmtID_bytes [4] = {0x66, 0x6d, 0x74, 0x20};
+    const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
+
+    SLullong blocksRead = 0;
+    SLint found = 0;
+    SLint foundFmt = 0;
+    SLint foundData = 0;
 
     // this is so everything looks nice i dont feel like doing (*wavBuf) everytime i want to do anything
     SL_WAV_FILE* buf = NULL;
@@ -244,45 +256,30 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
 
     // Allocate buf
     buf = (SL_WAV_FILE*)malloc(sizeof(SL_WAV_FILE));
+    void* temp_data = NULL;
     if(!buf) {
         ret = SL_FAIL;
         goto bufCleanup;
     }
 
     //
-    // Define and assign some stuff here.
+    // Define some stuff since we know buf has data now.
     //
-    SLuchar buffer4[4];
-    SLuchar buffer2[2];
-    const SLuchar riffID_bytes[4] = {0x52, 0x49, 0x46, 0x46};
-    const SLuchar waveID_bytes[4] = {0x57, 0x41, 0x56, 0x45};
-    const SLuchar fmtID_bytes [4] = {0x66, 0x6d, 0x74, 0x20};
-    const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
-
-    SLullong bytesRead = 0;
-    SLint found = 0;
     buf->dataChunk.pcmType = 0;
     buf->formatChunk.extensionSize = 0;
     buf->dataChunk.waveformData = NULL;
     buf->dataChunk.waveformData_signed = NULL;
 
     //read and validate chunkID
-    bytesRead = fread(buf->descriptorChunk.chunkID, 1, 4, file);
-    if (bytesRead != 4) {
+    blocksRead = fread(buf->descriptorChunk.descriptorId, 4, 1, file);
+    if (!blocksRead || memcmp(buf->descriptorChunk.descriptorId, riffID_bytes, 4) != 0) {
         ret = SL_INVALID_CHUNK_DESCRIPTOR_ID;
         goto bufCleanup;
     }
 
-    for (int i = 0; i < 4; ++i) {
-        if(buf->descriptorChunk.chunkID[i] != riffID_bytes[i]) {
-            ret = SL_INVALID_CHUNK_DESCRIPTOR_ID;
-            goto bufCleanup;
-        }
-    }
-
     //read and validate chunk size
-    bytesRead = fread(buffer4, 1, 4, file);
-    if (bytesRead != 4) {
+    blocksRead = fread(buffer4, 4, 1, file);
+    if (!blocksRead) {
         ret = SL_INVALID_CHUNK_DESCRIPTOR_SIZE;
         goto bufCleanup;
     }
@@ -293,211 +290,220 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     }
 
     //read and validate wave format
-    bytesRead = fread(buf->descriptorChunk.chunkFormat, 1, 4, file);
-    if (bytesRead != 4) {
+    blocksRead = fread(buf->descriptorChunk.chunkFormat, 4, 1, file);
+    if (!blocksRead || memcmp(buf->descriptorChunk.chunkFormat, waveID_bytes, 4) != 0) {
         ret = SL_INVALID_CHUNK_DESCRIPTOR_FORMAT;
         goto bufCleanup;
     }
 
-    for (int i = 0; i < 4; ++i) {
-        if(buf->descriptorChunk.chunkFormat[i] != waveID_bytes[i]) {
-            ret = SL_INVALID_CHUNK_DESCRIPTOR_FORMAT;
-            goto bufCleanup;
-        }
-    }
+    //search and parse other sections
+    blocksRead = fread(buffer4, 4, 1, file);
 
-    //read and validate fmt chunk id
-    bytesRead = fread(buf->formatChunk.subChunk1Id, 1, 4, file);
-    if (bytesRead != 4) {
-        ret = SL_INVALID_CHUNK_FMT_ID;
-        goto bufCleanup;
-    }
+    while(blocksRead) {
+        SLuint foundMatch = 0;
 
-    for (int i = 0; i < 4; ++i) {
-        if(buf->formatChunk.subChunk1Id[i] != fmtID_bytes[i]) {
-            ret = SL_INVALID_CHUNK_FMT_ID;
-            goto bufCleanup;
-        }
-    }
-
-    //read and validate fmt chunk size
-    bytesRead = fread(buffer4, 1, 4, file);
-    if (bytesRead != 4) {
-        ret = SL_INVALID_CHUNK_FMT_SIZE;
-        goto bufCleanup;
-    }
-    buf->formatChunk.subChunk1Size = sl_buf_to_native_uint(buffer4, 4);
-    if (buf->formatChunk.subChunk1Size == 0) {
-        ret = SL_INVALID_CHUNK_FMT_SIZE;
-        goto bufCleanup;
-    }
-
-    //read only. audio format is verified later when parsing bits per sample
-    bytesRead = fread(buffer2, 1, 2, file);
-    if (bytesRead != 2) {
-        ret = SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
-        goto bufCleanup;
-    }
-    buf->formatChunk.audioFormat = sl_buf_to_native_ushort(buffer2, 2);
-
-    //read and validate num channels.
-    bytesRead = fread(buffer2, 1, 2, file);
-    if (bytesRead != 2) {
-        ret = SL_INVALID_CHUNK_FMT_CHANNELS;
-        goto bufCleanup;
-    }
-    buf->formatChunk.numChannels = sl_buf_to_native_ushort(buffer2, 2);
-    if (buf->formatChunk.numChannels == 0) {
-        ret = SL_INVALID_CHUNK_FMT_CHANNELS;
-        goto bufCleanup;
-    }
-
-    //read and validate sample rate
-    bytesRead = fread(buffer4, 1, 4, file);
-    if (bytesRead != 4) {
-        ret = SL_INVALID_CHUNK_FMT_SAMPLE_RATE;
-        goto bufCleanup;
-    }
-    buf->formatChunk.sampleRate = sl_buf_to_native_uint(buffer4, 4);
-    if (buf->formatChunk.sampleRate == 0) {
-        ret = SL_INVALID_CHUNK_FMT_SAMPLE_RATE;
-        goto bufCleanup;
-    }
-
-    //read and validate byte rate
-    bytesRead = fread(buffer4, 1, 4, file);
-    if (bytesRead != 4) {
-        ret = SL_INVALID_CHUNK_FMT_BYTE_RATE;
-        goto bufCleanup;
-    }
-    buf->formatChunk.byteRate = sl_buf_to_native_uint(buffer4, 4);
-    if (buf->formatChunk.byteRate == 0) {
-        ret = SL_INVALID_CHUNK_FMT_BYTE_RATE;
-        goto bufCleanup;
-    }
-
-    //read and validate block align
-    bytesRead = fread(buffer2, 1, 2, file);
-    if (bytesRead != 2) {
-        ret = SL_INVALID_CHUNK_FMT_BLOCK_ALIGN;
-        goto bufCleanup;
-    }
-    buf->formatChunk.blockAlign = sl_buf_to_native_ushort(buffer2, 2);
-    if (buf->formatChunk.blockAlign == 0) {
-        ret = SL_INVALID_CHUNK_FMT_BLOCK_ALIGN;
-        goto bufCleanup;
-    }
-
-    //read and validate bits per sample
-    bytesRead = fread(buffer2, 1, 2, file);
-    if (bytesRead != 2) {
-        ret = SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
-        goto bufCleanup;
-    }
-    buf->formatChunk.bitsPerSample = sl_buf_to_native_ushort(buffer2, 2);
-    if(buf->formatChunk.audioFormat == 1) {
-        switch (buf->formatChunk.bitsPerSample) {
-            case 8:
-                buf->dataChunk.pcmType = SL_UNSIGNED_8PCM;
-                break;
-            case 16:
-                buf->dataChunk.pcmType = SL_SIGNED_16PCM;
-                break;
-            case 24:
-                buf->dataChunk.pcmType = SL_SIGNED_24PCM;
-                break;
-            case 32:
-                buf->dataChunk.pcmType = SL_SIGNED_32PCM;
-                break;
-            default: break;
-        }
-    } else if (buf->formatChunk.audioFormat == 3) {
-        switch (buf->formatChunk.bitsPerSample) {
-            case 32:
-                buf->dataChunk.pcmType = SL_FLOAT_32PCM;
-                break;
-            case 64:
-                buf->dataChunk.pcmType = SL_FLOAT_64PCM;
-                break;
-            default: break;
-        }
-        //its pcm so we dont have to do anything with extension size
-    } else {
-        ret = SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
-        goto bufCleanup;
-    }
-
-    if (buf->dataChunk.pcmType == 0) {
-        ret = SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
-        goto bufCleanup;
-    }
-
-    //keep reading until find data
-    bytesRead = fread(buf->dataChunk.subChunk2Id, 1, 4, file);
-
-    while(bytesRead == 4) {
         // check if everything is valid
         if (feof(file) || ferror(file)) {
-            ret = SL_INVALID_CHUNK_DATA_ID;
+            ret = SL_INVALID_WAVE_FORMAT;
             goto bufCleanup;
         }
 
-        // check if bytes match omg
-        SLuint matchingBytes = 0;
-        for (int i = 0; i < 4; ++i) {
-            if(buf->dataChunk.subChunk2Id[i] == dataID_bytes[i]) {
-                matchingBytes++;
+        //FORMAT CHUNK
+        if(!foundFmt && memcmp(buffer4, fmtID_bytes, 4) == 0) {
+            foundMatch = 1;
+            foundFmt = 1;
+            //store format id
+            memcpy(buf->formatChunk.fmtId, buffer4, 4);
+
+            //read and validate fmt chunk size
+            blocksRead = fread(buffer4, 4, 1, file);
+            if (!blocksRead) {
+                ret = SL_INVALID_CHUNK_FMT_SIZE;
+                goto bufCleanup;
+            }
+            buf->formatChunk.subChunk1Size = sl_buf_to_native_uint(buffer4, 4);
+            if (buf->formatChunk.subChunk1Size == 0) {
+                ret = SL_INVALID_CHUNK_FMT_SIZE;
+                goto bufCleanup;
+            }
+
+            //read only. audio format is verified later when parsing bits per sample
+            blocksRead = fread(buffer2, 2, 1, file);
+            if (!blocksRead) {
+                ret = SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
+                goto bufCleanup;
+            }
+            buf->formatChunk.audioFormat = sl_buf_to_native_ushort(buffer2, 2);
+
+            //read and validate num channels.
+            blocksRead = fread(buffer2, 2, 1, file);
+            if (!blocksRead) {
+                ret = SL_INVALID_CHUNK_FMT_CHANNELS;
+                goto bufCleanup;
+            }
+            buf->formatChunk.numChannels = sl_buf_to_native_ushort(buffer2, 2);
+            if (buf->formatChunk.numChannels == 0) {
+                ret = SL_INVALID_CHUNK_FMT_CHANNELS;
+                goto bufCleanup;
+            }
+
+            //read and validate sample rate
+            blocksRead = fread(buffer4, 4, 1, file);
+            if (!blocksRead) {
+                ret = SL_INVALID_CHUNK_FMT_SAMPLE_RATE;
+                goto bufCleanup;
+            }
+            buf->formatChunk.sampleRate = sl_buf_to_native_uint(buffer4, 4);
+            if (buf->formatChunk.sampleRate == 0) {
+                ret = SL_INVALID_CHUNK_FMT_SAMPLE_RATE;
+                goto bufCleanup;
+            }
+
+            //read and validate byte rate
+            blocksRead = fread(buffer4, 4, 1, file);
+            if (!blocksRead) {
+                ret = SL_INVALID_CHUNK_FMT_BYTE_RATE;
+                goto bufCleanup;
+            }
+            buf->formatChunk.byteRate = sl_buf_to_native_uint(buffer4, 4);
+            if (buf->formatChunk.byteRate == 0) {
+                ret = SL_INVALID_CHUNK_FMT_BYTE_RATE;
+                goto bufCleanup;
+            }
+
+            //read and validate block align
+            blocksRead = fread(buffer2, 2, 1, file);
+            if (!blocksRead) {
+                ret = SL_INVALID_CHUNK_FMT_BLOCK_ALIGN;
+                goto bufCleanup;
+            }
+            buf->formatChunk.blockAlign = sl_buf_to_native_ushort(buffer2, 2);
+            if (buf->formatChunk.blockAlign == 0) {
+                ret = SL_INVALID_CHUNK_FMT_BLOCK_ALIGN;
+                goto bufCleanup;
+            }
+
+            //read and validate bits per sample
+            blocksRead = fread(buffer2, 2, 1, file);
+            if (!blocksRead) {
+                ret = SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
+                goto bufCleanup;
+            }
+            buf->formatChunk.bitsPerSample = sl_buf_to_native_ushort(buffer2, 2);
+            if(buf->formatChunk.audioFormat == 1) {
+                switch (buf->formatChunk.bitsPerSample) {
+                    case 8:
+                        buf->dataChunk.pcmType = SL_UNSIGNED_8PCM;
+                        break;
+                    case 16:
+                        buf->dataChunk.pcmType = SL_SIGNED_16PCM;
+                        break;
+                    case 24:
+                        buf->dataChunk.pcmType = SL_SIGNED_24PCM;
+                        break;
+                    case 32:
+                        buf->dataChunk.pcmType = SL_SIGNED_32PCM;
+                        break;
+                    default: break;
+                }
+            } else if (buf->formatChunk.audioFormat == 3) {
+                switch (buf->formatChunk.bitsPerSample) {
+                    case 32:
+                        buf->dataChunk.pcmType = SL_FLOAT_32PCM;
+                        break;
+                    case 64:
+                        buf->dataChunk.pcmType = SL_FLOAT_64PCM;
+                        break;
+                    default: break;
+                }
+                //its pcm so we dont have to do anything with extension size
+            } else {
+                ret = SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
+                goto bufCleanup;
+            }
+
+            if (buf->dataChunk.pcmType == 0) {
+                ret = SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
+                goto bufCleanup;
             }
         }
 
-        // get size of that chunk :eyes:
-        bytesRead = fread(buffer4, 1, 4, file);
-        if (bytesRead != 4) {
-            ret = SL_INVALID_CHUNK_DATA_SIZE;
-            goto bufCleanup;
-        }
-        buf->dataChunk.subChunk2Size = sl_buf_to_native_uint(buffer4, 4);
-        if (buf->dataChunk.subChunk2Size == 0) {
-            ret = SL_INVALID_CHUNK_DATA_SIZE;
-            goto bufCleanup;
+        // DATA CHUNK
+        else if(!foundData && memcmp(buffer4, dataID_bytes, 4) == 0) {
+            foundMatch = 1;
+            foundData = 1;
+            //parse format and put id in format
+
+            //store data id
+            memcpy(buf->dataChunk.dataId, buffer4, 4);
+
+            //data chunk size
+            blocksRead = fread(buffer4, 4, 1, file);
+            if (!blocksRead) {
+                ret = SL_INVALID_CHUNK_DATA_SIZE;
+                goto bufCleanup;
+            }
+
+            buf->dataChunk.subChunk2Size = sl_buf_to_native_uint(buffer4, 4);
+            if (buf->dataChunk.subChunk2Size == 0) {
+                ret = SL_INVALID_CHUNK_DATA_SIZE;
+                goto bufCleanup;
+            }
+
+            temp_data = malloc(buf->dataChunk.subChunk2Size);
+            if (!temp_data) {
+                ret = SL_FAIL;
+                goto bufCleanup;
+            }
+
+            blocksRead = fread(temp_data, buf->dataChunk.subChunk2Size, 1, file);
+            if (!blocksRead) {
+                ret = SL_INVALID_CHUNK_DATA_DATA;
+                goto bufCleanup;
+            }
         }
 
-        // check if found that data :smirk:
-        if(matchingBytes == 4) {
-            found = 1;
-            break;
+        if(foundFmt && foundData) break;
+
+        //we are using this instead of an else for expandability
+        if(foundMatch != 1) {
+            SLullong size = 0;
+            blocksRead = fread(buffer4, 4, 1, file);
+            if (!blocksRead) {
+                ret = SL_INVALID_WAVE_FORMAT;
+                goto bufCleanup;
+            }
+
+            size = sl_buf_to_native_uint(buffer4, 4);
+            if (size == 0) {
+                ret = SL_INVALID_WAVE_FORMAT;
+                goto bufCleanup;
+            }
+
+            // skip chunk and read next ID
+            fseek(file, size, SEEK_CUR);
+            blocksRead = fread(buffer4, 4, 1, file);
+        } else {
+            blocksRead = fread(buffer4, 4, 1, file);
         }
 
-        // skip chunk and read next ID
-        fseek(file, buf->dataChunk.subChunk2Size, SEEK_CUR);
-        bytesRead = fread(buf->dataChunk.subChunk2Id, 1, 4, file);
     }
 
-    if(!found) {
-        ret = SL_INVALID_CHUNK_DATA_ID;
+    if(!foundFmt) {
+        ret = SL_CHUNK_FORMAT_NOT_FOUND;
+        goto bufCleanup;
+    } else if(!foundData) {
+        ret = SL_CHUNK_DATA_NOT_FOUND;
         goto bufCleanup;
     }
 
-    //alloc data
+    //copy data into buf
     if(buf->dataChunk.pcmType == SL_UNSIGNED_8PCM) {
         buf->dataChunk.waveformData = malloc(buf->dataChunk.subChunk2Size);
-        if (!buf->dataChunk.waveformData) {
-            ret = SL_FAIL;
-            goto bufCleanup;
-        }
-        bytesRead = fread(buf->dataChunk.waveformData, 1, buf->dataChunk.subChunk2Size, file);
+        memcpy(buf->dataChunk.waveformData, temp_data, buf->dataChunk.subChunk2Size);
     } else {
         buf->dataChunk.waveformData_signed = malloc(buf->dataChunk.subChunk2Size);
-        if (!buf->dataChunk.waveformData_signed) {
-            ret = SL_FAIL;
-            goto bufCleanup;
-        }
-        bytesRead = fread(buf->dataChunk.waveformData_signed, 1, buf->dataChunk.subChunk2Size, file);
-    }
-
-    if (bytesRead != buf->dataChunk.subChunk2Size) {
-        ret = SL_INVALID_CHUNK_DATA_DATA;
-        goto bufCleanup;
+        memcpy(buf->dataChunk.waveformData, temp_data, buf->dataChunk.subChunk2Size);
     }
 
     *wavBuf = buf;
@@ -512,6 +518,8 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
             buf->dataChunk.waveformData_signed = NULL;
         }
         free(buf);
+        free(temp_data);
+        temp_data = NULL;
         buf = NULL;
         *wavBuf = NULL;
     fileCleanup:
