@@ -120,13 +120,14 @@ static SLbool sysEndianness;
 /////////////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Struct Definitions ///////////////////
 /////////////////////////////////////////////////////////////////////////
-typedef struct {
+
+typedef struct sl_wav_descriptor {
     SLuchar chunkID[4];
     SLuint chunkSize;
     SLuchar chunkFormat[4];
 } SL_WAV_DESCRIPTOR;
 
-typedef struct {
+typedef struct sl_wav_fmt {
     SLuchar subChunk1Id[4];
     SLuint subChunk1Size;
     SLushort audioFormat;
@@ -138,7 +139,7 @@ typedef struct {
     SLushort extensionSize;
 } SL_WAV_FMT;
 
-typedef struct {
+typedef struct sl_wav_data {
     SLuchar subChunk2Id[4];
     SLuint subChunk2Size;
     SLenum pcmType;
@@ -146,7 +147,7 @@ typedef struct {
     SLchar*  waveformData_signed;
 } SL_WAV_DATA;
 
-typedef struct WAV_FILE_DATA {
+typedef struct sl_wav_file {
     SL_WAV_DESCRIPTOR descriptorChunk;
     SL_WAV_FMT formatChunk;
     SL_WAV_DATA dataChunk;
@@ -214,6 +215,7 @@ SLuint sl_buf_to_native_uint(SLuchar* buf, SLuint bufLen);
 ///////////////// Wave File Parser Function Implementations ///////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+//TODO fully support the finding of sub chunks. (fmt can be in a different spot and we need to acount for that)
 SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     SLenum ret = SL_SUCCESS;
 
