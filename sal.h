@@ -272,6 +272,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     buf->dataChunk.waveformData_signed = NULL;
 
     //read and validate chunkID
+    //TODO optimize block reading because if we zero the buffer, we can actually just run the comparasin and combine the if statements
     blocksRead = fread(buf->descriptorChunk.descriptorId, 4, 1, file);
     if (!blocksRead) {
         ret = SL_INVALID_CHUNK_DESCRIPTOR_ID;
