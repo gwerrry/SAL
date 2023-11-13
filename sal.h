@@ -503,7 +503,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         goto bufCleanup;
     }
 
-    //TODO test this signed and unsigned when we play sounds because in theory we shouldnt have to wonder about the sign bits
+    //TODO test this signed and unsigned when we play sounds because in theory we shouldnt have to wonder about the sign bits. if we dont then thats a REALLY NICE optimization
     //copy data into buf
     if(buf->dataChunk.pcmType == SL_UNSIGNED_8PCM) {
         buf->dataChunk.waveformData = malloc(buf->dataChunk.subChunk2Size);
