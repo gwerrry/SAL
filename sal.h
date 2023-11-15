@@ -173,17 +173,17 @@ static SLenum sl_cleanup(void);
  * @brief Parses wave file at the path.
  * For more information on types of WAVE files supported, go to the Github.
  * @param path - Path of WAVE file to parse.
- * @param wavBuf - Buffer for the WAVE file.
+ * @param wavBufPtr - Buffer for the WAVE file.
  * @return SL_SUCCESS if succeeded. There are many useful return codes documented on the Github so you can debug anything else that happens.
  */
-static SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
+static SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr);
 
 /**
  * @brief Frees the memory associated with the WAVE file.
  * Also sets the buf to NULL.
  * @param buf - Buffer of WAVE file to free.
  */
-static void sl_free_wave_file(SL_WAV_FILE* buf);
+static void sl_free_wave_file(SL_WAV_FILE** bufPtr);
 
 /**
  * @brief This is just for checking if the file provided in the parser ends with ".wav".
@@ -227,14 +227,14 @@ static SLint sl_flip_endian_int(SLint i);
 
 /**
  * @brief Flips the endian-ness of a SLfloat.
- * @param i SLfloat to flip.
+ * @param f SLfloat to flip.
  * @return SLfloat with the endian-ness flipped.
  */
 static SLfloat sl_flip_endian_float(SLfloat f);
 
 /**
  * @brief Flips the endian-ness of a SLdouble.
- * @param i SLdouble to flip.
+ * @param d SLdouble to flip.
  * @return SLdouble with the endian-ness flipped.
  */
 static SLdouble sl_flip_endian_double(SLdouble d);
@@ -244,9 +244,10 @@ static SLdouble sl_flip_endian_double(SLdouble d);
 ///////////////////////////////////////////////////////////////////////////////
 
 //TODO test rifx support.
-SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
+SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr) {
     SLenum ret = SL_SUCCESS;
 
+    SL_WAV_FILE* wavBuf = NULL;
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
     SLuchar buffer2[2] = {0x00, 0x00};
     const SLuchar riffID_bytes[4] = {0x52, 0x49, 0x46, 0x46};
@@ -254,7 +255,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     const SLuchar waveID_bytes[4] = {0x57, 0x41, 0x56, 0x45};
     const SLuchar fmtID_bytes [4] = {0x66, 0x6d, 0x74, 0x20};
     const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
-
     SLullong blocksRead = 0;
     SLbool found = 0;
     SLbool foundFmt = 0;
@@ -281,11 +281,13 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     }
 
     // Allocate buf
-    wavBuf = (SL_WAV_FILE*)calloc(1, sizeof(SL_WAV_FILE));
-    if(!wavBuf) {
+    *wavBufPtr = (SL_WAV_FILE*)calloc(1, sizeof(SL_WAV_FILE));
+    if (!(*wavBufPtr)) {
         ret = SL_FAIL;
         goto bufCleanup;
     }
+
+    wavBuf = *wavBufPtr;
 
     //
     // Define some stuff since we know buf has data now.
@@ -598,20 +600,23 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
             wavBuf->dataChunk.waveformData = NULL;
         }
         free(wavBuf);
-        wavBuf = NULL;
+       *wavBufPtr = NULL;
     fileCleanup:
         fclose(file);
     exit:
         return ret;
 }
 
-void sl_free_wave_file(SL_WAV_FILE* buf) {
-    if(buf) {
+void sl_free_wave_file(SL_WAV_FILE** bufPtr) {
+    if (*bufPtr) {
+        SL_WAV_FILE* buf = *bufPtr;
         free(buf->dataChunk.waveformData);
         buf->dataChunk.waveformData = NULL;
         free(buf);
+        *bufPtr = NULL;
     }
 }
+
 
 SLenum sl_init(void) {
     //quickly check the endianness of the system

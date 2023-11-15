@@ -17,11 +17,11 @@ int main(void) {
     input[strcspn(input, "\n")] = 0;
 
     SL_WAV_FILE *buf = NULL;
-    SLenum out = sl_parse_wave_file(input, buf);
+    SLenum out = sl_parse_wave_file(input, &buf);
 
     if(out == SL_SUCCESS || buf) {
         printf("Successfully parsed WAVE file at \"%s\".\n", input);
-        sl_free_wave_file(buf);
+        sl_free_wave_file(&buf);
     } else {
         printf("Failed to parse WAVE file at \"%s\".\n", input);
     }
