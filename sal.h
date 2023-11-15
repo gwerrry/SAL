@@ -42,7 +42,7 @@ extern "C" {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////// Tells us the native endian-ness of the system so we don't have to convert every time. ///////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-static SLbool sysEndianness;
+static SLbool sysEndianness = 0;
 
 //////////////////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Return Code Definitions ///////////////////
@@ -162,13 +162,13 @@ typedef struct sl_wav_file {
  * @brief Sound library init function. You MUST call this even when using the wave file parser.
  * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
  */
-SLenum sl_init(void);
+static SLenum sl_init(void);
 
 /**
  * @brief Sound library cleanup function. You should call this when your app execution ends.
  * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
  */
-SLenum sl_cleanup(void);
+static SLenum sl_cleanup(void);
 
 /**
  * @brief Parses wave file at the path.
@@ -177,14 +177,14 @@ SLenum sl_cleanup(void);
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if succeeded. There are many useful return codes documented on the Github so you can debug anything else that happens.
  */
-SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf);
+static SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Frees the memory associated with the WAVE file.
  * Also sets the buf to NULL.
  * @param buf - Buffer of WAVE file to free.
  */
-void sl_free_wave_file(SL_WAV_FILE** buf);
+static void sl_free_wave_file(SL_WAV_FILE* buf);
 
 /**
  * @brief This is just for checking if the file provided in the parser ends with ".wav".
@@ -194,7 +194,7 @@ void sl_free_wave_file(SL_WAV_FILE** buf);
  * @param suffix - Suffix to check for.
  * @return SL_SUCCESS if it worked and SL_FAIL if it failed.
  */
-SLenum ends_with(SLstr str, SLstr suffix);
+static SLenum ends_with(SLstr str, SLstr suffix);
 
 /**
  * @brief Converts a SLuchar* buf to a SLushort, but takes into account the system's native endian-ness.
@@ -202,7 +202,7 @@ SLenum ends_with(SLstr str, SLstr suffix);
  * @param bufLen - Length of SLuchar buffer to convert.
  * @return The value of the buffer represented as a SLushort taking into account the system's native endian-ness. Returns zero if it fails. I know it's not helpful, but you can debug!
  */
-SLushort sl_buf_to_native_ushort(SLuchar* buf, SLuint bufLen);
+static SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLuint bufLen);
 
 /**
  * @brief Converts a SLuchar* buf to a SLuint, but takes into account the system's native endian-ness.
@@ -210,13 +210,13 @@ SLushort sl_buf_to_native_ushort(SLuchar* buf, SLuint bufLen);
  * @param bufLen - Length of SLuchar buffer to convert.
  * @return The value of the buffer represented as a SLuint taking into account the system's native endian-ness. Returns zero if it fails. I know it's not helpful, but you can debug!
  */
-SLuint sl_buf_to_native_uint(SLuchar* buf, SLuint bufLen);
+static SLuint sl_buf_to_native_uint(const SLuchar* buf, SLuint bufLen);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Function Implementations ///////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
+SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     SLenum ret = SL_SUCCESS;
 
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
@@ -232,12 +232,9 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     SLbool foundFmt = 0;
     SLbool foundData = 0;
     SLbool usingRIFX = 0;
-    // this is so everything looks nice i dont feel like doing (*wavBuf) everytime i want to do anything
-    SL_WAV_FILE* buf = NULL;
-    *wavBuf = NULL;
 
     //ensure pointers are good were just going to assume the user allocated stuff right
-    if (!path || !wavBuf) {
+    if (!path) {
         ret = SL_INVALID_VALUE;
         goto exit;
     }
@@ -256,9 +253,9 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     }
 
     // Allocate buf
-    buf = (SL_WAV_FILE*)malloc(sizeof(SL_WAV_FILE));
+    wavBuf = (SL_WAV_FILE*)calloc(1, sizeof(SL_WAV_FILE));
     void* temp_data = NULL;
-    if(!buf) {
+    if(!wavBuf) {
         ret = SL_FAIL;
         goto bufCleanup;
     }
@@ -266,21 +263,21 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
     //
     // Define some stuff since we know buf has data now.
     //
-    buf->dataChunk.pcmType = 0;
-    buf->formatChunk.extensionSize = 0;
-    buf->dataChunk.waveformData = NULL;
-    buf->dataChunk.waveformData_signed = NULL;
+    wavBuf->dataChunk.pcmType = 0;
+    wavBuf->formatChunk.extensionSize = 0;
+    wavBuf->dataChunk.waveformData = NULL;
+    wavBuf->dataChunk.waveformData_signed = NULL;
 
     //read and validate chunkID
     //TODO optimize block reading because if we zero the buffer, we can actually just run the comparison and combine the if statements
-    blocksRead = fread(buf->descriptorChunk.descriptorId, 4, 1, file);
+    blocksRead = fread(wavBuf->descriptorChunk.descriptorId, 4, 1, file);
     if (!blocksRead) {
         ret = SL_INVALID_CHUNK_DESCRIPTOR_ID;
         goto bufCleanup;
     }
 
-    if (memcmp(buf->descriptorChunk.descriptorId, riffID_bytes, 4) != 0) {}
-    else if (memcmp(buf->descriptorChunk.descriptorId, rifxID_bytes, 4) != 0) usingRIFX = 1;
+    if (memcmp(wavBuf->descriptorChunk.descriptorId, riffID_bytes, 4) != 0) {}
+    else if (memcmp(wavBuf->descriptorChunk.descriptorId, rifxID_bytes, 4) != 0) usingRIFX = 1;
     else {
         ret = SL_INVALID_CHUNK_DESCRIPTOR_ID;
         goto bufCleanup;
@@ -288,15 +285,15 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
 
     //read and validate chunk size
     blocksRead = fread(buffer4, 4, 1, file);
-    buf->descriptorChunk.chunkSize = sl_buf_to_native_uint(buffer4, 4);
-    if (!blocksRead ||buf->descriptorChunk.chunkSize == 0) {
+    wavBuf->descriptorChunk.chunkSize = sl_buf_to_native_uint(buffer4, 4);
+    if (!blocksRead ||wavBuf->descriptorChunk.chunkSize == 0) {
         ret = SL_INVALID_CHUNK_DESCRIPTOR_SIZE;
         goto bufCleanup;
     }
 
     //read and validate wave format
-    blocksRead = fread(buf->descriptorChunk.chunkFormat, 4, 1, file);
-    if (!blocksRead || memcmp(buf->descriptorChunk.chunkFormat, waveID_bytes, 4) != 0) {
+    blocksRead = fread(wavBuf->descriptorChunk.chunkFormat, 4, 1, file);
+    if (!blocksRead || memcmp(wavBuf->descriptorChunk.chunkFormat, waveID_bytes, 4) != 0) {
         ret = SL_INVALID_CHUNK_DESCRIPTOR_FORMAT;
         goto bufCleanup;
     }
@@ -318,12 +315,12 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
             foundMatch = 1;
             foundFmt = 1;
             //store format id
-            memcpy(buf->formatChunk.fmtId, buffer4, 4);
+            memcpy(wavBuf->formatChunk.fmtId, buffer4, 4);
 
             //read and validate fmt chunk size
             blocksRead = fread(buffer4, 4, 1, file);
-            buf->formatChunk.subChunk1Size = sl_buf_to_native_uint(buffer4, 4);
-            if (!blocksRead || buf->formatChunk.subChunk1Size == 0) {
+            wavBuf->formatChunk.subChunk1Size = sl_buf_to_native_uint(buffer4, 4);
+            if (!blocksRead || wavBuf->formatChunk.subChunk1Size == 0) {
                 ret = SL_INVALID_CHUNK_FMT_SIZE;
                 goto bufCleanup;
             }
@@ -334,36 +331,36 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
                 ret = SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
                 goto bufCleanup;
             }
-            buf->formatChunk.audioFormat = sl_buf_to_native_ushort(buffer2, 2);
+            wavBuf->formatChunk.audioFormat = sl_buf_to_native_ushort(buffer2, 2);
 
             //read and validate num channels.
             blocksRead = fread(buffer2, 2, 1, file);
-            buf->formatChunk.numChannels = sl_buf_to_native_ushort(buffer2, 2);
-            if (!blocksRead || buf->formatChunk.numChannels == 0) {
+            wavBuf->formatChunk.numChannels = sl_buf_to_native_ushort(buffer2, 2);
+            if (!blocksRead || wavBuf->formatChunk.numChannels == 0) {
                 ret = SL_INVALID_CHUNK_FMT_CHANNELS;
                 goto bufCleanup;
             }
 
             //read and validate sample rate
             blocksRead = fread(buffer4, 4, 1, file);
-            buf->formatChunk.sampleRate = sl_buf_to_native_uint(buffer4, 4);
-            if (!blocksRead || buf->formatChunk.sampleRate == 0) {
+            wavBuf->formatChunk.sampleRate = sl_buf_to_native_uint(buffer4, 4);
+            if (!blocksRead || wavBuf->formatChunk.sampleRate == 0) {
                 ret = SL_INVALID_CHUNK_FMT_SAMPLE_RATE;
                 goto bufCleanup;
             }
 
             //read and validate byte rate
             blocksRead = fread(buffer4, 4, 1, file);
-            buf->formatChunk.byteRate = sl_buf_to_native_uint(buffer4, 4);
-            if (!blocksRead || buf->formatChunk.byteRate == 0) {
+            wavBuf->formatChunk.byteRate = sl_buf_to_native_uint(buffer4, 4);
+            if (!blocksRead || wavBuf->formatChunk.byteRate == 0) {
                 ret = SL_INVALID_CHUNK_FMT_BYTE_RATE;
                 goto bufCleanup;
             }
 
             //read and validate block align
             blocksRead = fread(buffer2, 2, 1, file);
-            buf->formatChunk.blockAlign = sl_buf_to_native_ushort(buffer2, 2);
-            if (!blocksRead || buf->formatChunk.blockAlign == 0) {
+            wavBuf->formatChunk.blockAlign = sl_buf_to_native_ushort(buffer2, 2);
+            if (!blocksRead || wavBuf->formatChunk.blockAlign == 0) {
                 ret = SL_INVALID_CHUNK_FMT_BLOCK_ALIGN;
                 goto bufCleanup;
             }
@@ -375,30 +372,30 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
                 goto bufCleanup;
             }
 
-            buf->formatChunk.bitsPerSample = sl_buf_to_native_ushort(buffer2, 2);
-            if(buf->formatChunk.audioFormat == 1) {
-                switch (buf->formatChunk.bitsPerSample) {
+            wavBuf->formatChunk.bitsPerSample = sl_buf_to_native_ushort(buffer2, 2);
+            if(wavBuf->formatChunk.audioFormat == 1) {
+                switch (wavBuf->formatChunk.bitsPerSample) {
                     case 8:
-                        buf->dataChunk.pcmType = SL_UNSIGNED_8PCM;
+                        wavBuf->dataChunk.pcmType = SL_UNSIGNED_8PCM;
                         break;
                     case 16:
-                        buf->dataChunk.pcmType = SL_SIGNED_16PCM;
+                        wavBuf->dataChunk.pcmType = SL_SIGNED_16PCM;
                         break;
                     case 24:
-                        buf->dataChunk.pcmType = SL_SIGNED_24PCM;
+                        wavBuf->dataChunk.pcmType = SL_SIGNED_24PCM;
                         break;
                     case 32:
-                        buf->dataChunk.pcmType = SL_SIGNED_32PCM;
+                        wavBuf->dataChunk.pcmType = SL_SIGNED_32PCM;
                         break;
                     default: break;
                 }
-            } else if (buf->formatChunk.audioFormat == 3) {
-                switch (buf->formatChunk.bitsPerSample) {
+            } else if (wavBuf->formatChunk.audioFormat == 3) {
+                switch (wavBuf->formatChunk.bitsPerSample) {
                     case 32:
-                        buf->dataChunk.pcmType = SL_FLOAT_32PCM;
+                        wavBuf->dataChunk.pcmType = SL_FLOAT_32PCM;
                         break;
                     case 64:
-                        buf->dataChunk.pcmType = SL_FLOAT_64PCM;
+                        wavBuf->dataChunk.pcmType = SL_FLOAT_64PCM;
                         break;
                     default: break;
                 }
@@ -408,7 +405,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
                 goto bufCleanup;
             }
 
-            if (buf->dataChunk.pcmType == 0) {
+            if (wavBuf->dataChunk.pcmType == 0) {
                 ret = SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
                 goto bufCleanup;
             }
@@ -420,7 +417,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
             foundData = 1;
 
             //store data id
-            memcpy(buf->dataChunk.dataId, buffer4, 4);
+            memcpy(wavBuf->dataChunk.dataId, buffer4, 4);
 
             //data chunk size
             blocksRead = fread(buffer4, 4, 1, file);
@@ -429,19 +426,19 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
                 goto bufCleanup;
             }
 
-            buf->dataChunk.subChunk2Size = sl_buf_to_native_uint(buffer4, 4);
-            if (buf->dataChunk.subChunk2Size == 0) {
+            wavBuf->dataChunk.subChunk2Size = sl_buf_to_native_uint(buffer4, 4);
+            if (wavBuf->dataChunk.subChunk2Size == 0) {
                 ret = SL_INVALID_CHUNK_DATA_SIZE;
                 goto bufCleanup;
             }
 
-            temp_data = malloc(buf->dataChunk.subChunk2Size);
+            temp_data = malloc(wavBuf->dataChunk.subChunk2Size);
             if (!temp_data) {
                 ret = SL_FAIL;
                 goto bufCleanup;
             }
 
-            blocksRead = fread(temp_data, buf->dataChunk.subChunk2Size, 1, file);
+            blocksRead = fread(temp_data, wavBuf->dataChunk.subChunk2Size, 1, file);
             if (!blocksRead) {
                 ret = SL_INVALID_CHUNK_DATA_DATA;
                 goto bufCleanup;
@@ -482,25 +479,25 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
         goto bufCleanup;
     }
 
-    //TODO test this signed and unsigned when we play sounds because in theory we shouldnt have to wonder about the sign bits. if we dont then thats a REALLY NICE optimization
+    //fix the way data is handled
     //copy data into buf
-    if(buf->dataChunk.pcmType == SL_UNSIGNED_8PCM) {
-        buf->dataChunk.waveformData = malloc(buf->dataChunk.subChunk2Size);
-        if(!usingRIFX) memcpy(buf->dataChunk.waveformData, temp_data, buf->dataChunk.subChunk2Size);
+    if(wavBuf->dataChunk.pcmType == SL_UNSIGNED_8PCM) {
+        wavBuf->dataChunk.waveformData = malloc(wavBuf->dataChunk.subChunk2Size);
+        if(!usingRIFX) memcpy(wavBuf->dataChunk.waveformData, temp_data, wavBuf->dataChunk.subChunk2Size);
         else {
             //memcpy... BUT IN REVERSE?!?!
-            SLullong len = buf->dataChunk.subChunk2Size;
-            SLuchar *d = buf->dataChunk.waveformData + len - 1;
+            SLullong len = wavBuf->dataChunk.subChunk2Size;
+            SLuchar *d = wavBuf->dataChunk.waveformData + len - 1;
             const SLuchar *s = (SLuchar*)temp_data;
             while (len--) *d-- = *s++;
         }
     } else {
-        buf->dataChunk.waveformData_signed = malloc(buf->dataChunk.subChunk2Size);
-        if(!usingRIFX) memcpy(buf->dataChunk.waveformData_signed, temp_data, buf->dataChunk.subChunk2Size);
+        wavBuf->dataChunk.waveformData_signed = malloc(wavBuf->dataChunk.subChunk2Size);
+        if(!usingRIFX) memcpy(wavBuf->dataChunk.waveformData_signed, temp_data, wavBuf->dataChunk.subChunk2Size);
         else {
             //memcpy... BUT IN REVERSE?!?!
-            SLullong len = buf->dataChunk.subChunk2Size;
-            SLchar *d = buf->dataChunk.waveformData_signed + len - 1;
+            SLullong len = wavBuf->dataChunk.subChunk2Size;
+            SLchar *d = wavBuf->dataChunk.waveformData_signed + len - 1;
             const SLchar *s = (SLchar*)temp_data;
             while (len--) *d-- = *s++;
         }
@@ -509,42 +506,39 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBuf) {
 
     free(temp_data);
 
-    *wavBuf = buf;
-
-    if (buf->dataChunk.waveformData_signed || buf->dataChunk.waveformData) goto fileCleanup;
+    if (wavBuf->dataChunk.waveformData_signed || wavBuf->dataChunk.waveformData) goto fileCleanup;
     else {
         ret = SL_FAIL;
         goto bufCleanup;
     }
 
     bufCleanup:
-        if (buf) {
-            free(buf->dataChunk.waveformData);
-            free(buf->dataChunk.waveformData_signed);
-            buf->dataChunk.waveformData = NULL;
-            buf->dataChunk.waveformData_signed = NULL;
+        if (wavBuf) {
+            free(wavBuf->dataChunk.waveformData);
+            free(wavBuf->dataChunk.waveformData_signed);
+            wavBuf->dataChunk.waveformData = NULL;
+            wavBuf->dataChunk.waveformData_signed = NULL;
         }
-        free(buf);
+        free(wavBuf);
         free(temp_data);
         temp_data = NULL;
-        buf = NULL;
-        *wavBuf = NULL;
+        wavBuf = NULL;
     fileCleanup:
         fclose(file);
     exit:
         return ret;
 }
 
-void sl_free_wave_file(SL_WAV_FILE** buf) {
-    if(buf && *buf) {
-        free((*buf)->dataChunk.waveformData_signed);
-        free((*buf)->dataChunk.waveformData);
-        (*buf)->dataChunk.waveformData = NULL;
-        (*buf)->dataChunk.waveformData_signed = NULL;
-        free(*buf);
-        *buf = NULL;
+void sl_free_wave_file(SL_WAV_FILE* buf) {
+    if(buf) {
+        free(buf->dataChunk.waveformData_signed);
+        free(buf->dataChunk.waveformData);
+        buf->dataChunk.waveformData = NULL;
+        buf->dataChunk.waveformData_signed = NULL;
+        free(buf);
     }
 }
+
 
 SLenum sl_init(void) {
     //quickly check the endianness of the system
@@ -577,7 +571,7 @@ SLenum ends_with(SLstr str, SLstr suffix) {
     return res;
 }
 
-SLushort sl_buf_to_native_ushort(SLuchar* buf, SLuint bufLen) {
+SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLuint bufLen) {
     //who needs comments, am i right?
     if(!buf || bufLen < 2) return 0;
 
@@ -590,7 +584,7 @@ SLushort sl_buf_to_native_ushort(SLuchar* buf, SLuint bufLen) {
     return value;
 }
 
-SLuint sl_buf_to_native_uint(SLuchar* buf, SLuint bufLen) {
+SLuint sl_buf_to_native_uint(const SLuchar* buf, SLuint bufLen) {
     if(!buf || bufLen < 4) return 0;
 
     SLuint value = 0;
