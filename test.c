@@ -1,8 +1,7 @@
 #include "sal.h"
-extern void tet ();
 int main(void) {
     sl_init();
-tet();
+
     printf("Is this system LITTLE endian... %s\n", sysEndianness == LITTLE_ENDIAN ? "yes" : "no");
 
     printf("What WAVE file would you like to load?\n");

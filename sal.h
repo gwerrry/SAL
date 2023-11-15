@@ -38,7 +38,7 @@ extern "C" {
 #define SLfloat float
 #define SLdouble double
 #define SLstr const char*
-
+#define SLvoid void*
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////// Tells us the native endian-ness of the system so we don't have to convert every time. ///////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,8 +144,7 @@ typedef struct sl_wav_data {
     SLuchar dataId[4];
     SLuint subChunk2Size;
     SLenum pcmType;
-    SLuchar*  waveformData;
-    SLchar*  waveformData_signed;
+    SLvoid  waveformData;
 } SL_WAV_DATA;
 
 typedef struct sl_wav_file {
@@ -212,10 +211,39 @@ static SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLuint bufLen);
  */
 static SLuint sl_buf_to_native_uint(const SLuchar* buf, SLuint bufLen);
 
+/**
+ * @brief Flips the endian-ness of a SLshort.
+ * @param s SLshort to flip.
+ * @return SLshort with the endian-ness flipped.
+ */
+static SLshort sl_flip_endian_short(SLshort s);
+
+/**
+ * @brief Flips the endian-ness of a SLint.
+ * @param i SLint to flip.
+ * @return SLint with the endian-ness flipped.
+ */
+static SLint sl_flip_endian_int(SLint i);
+
+/**
+ * @brief Flips the endian-ness of a SLfloat.
+ * @param i SLfloat to flip.
+ * @return SLfloat with the endian-ness flipped.
+ */
+static SLfloat sl_flip_endian_float(SLfloat f);
+
+/**
+ * @brief Flips the endian-ness of a SLdouble.
+ * @param i SLdouble to flip.
+ * @return SLdouble with the endian-ness flipped.
+ */
+static SLdouble sl_flip_endian_double(SLdouble d);
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Function Implementations ///////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+//TODO test rifx support.
 SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     SLenum ret = SL_SUCCESS;
 
@@ -254,7 +282,6 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
 
     // Allocate buf
     wavBuf = (SL_WAV_FILE*)calloc(1, sizeof(SL_WAV_FILE));
-    void* temp_data = NULL;
     if(!wavBuf) {
         ret = SL_FAIL;
         goto bufCleanup;
@@ -266,10 +293,8 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     wavBuf->dataChunk.pcmType = 0;
     wavBuf->formatChunk.extensionSize = 0;
     wavBuf->dataChunk.waveformData = NULL;
-    wavBuf->dataChunk.waveformData_signed = NULL;
 
     //read and validate chunkID
-    //TODO optimize block reading because if we zero the buffer, we can actually just run the comparison and combine the if statements
     blocksRead = fread(wavBuf->descriptorChunk.descriptorId, 4, 1, file);
     if (!blocksRead) {
         ret = SL_INVALID_CHUNK_DESCRIPTOR_ID;
@@ -373,6 +398,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
             }
 
             wavBuf->formatChunk.bitsPerSample = sl_buf_to_native_ushort(buffer2, 2);
+
             if(wavBuf->formatChunk.audioFormat == 1) {
                 switch (wavBuf->formatChunk.bitsPerSample) {
                     case 8:
@@ -421,24 +447,20 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
 
             //data chunk size
             blocksRead = fread(buffer4, 4, 1, file);
-            if (!blocksRead) {
-                ret = SL_INVALID_CHUNK_DATA_SIZE;
-                goto bufCleanup;
-            }
-
             wavBuf->dataChunk.subChunk2Size = sl_buf_to_native_uint(buffer4, 4);
-            if (wavBuf->dataChunk.subChunk2Size == 0) {
+            if (!blocksRead || wavBuf->dataChunk.subChunk2Size == 0) {
                 ret = SL_INVALID_CHUNK_DATA_SIZE;
                 goto bufCleanup;
             }
 
-            temp_data = malloc(wavBuf->dataChunk.subChunk2Size);
-            if (!temp_data) {
+            wavBuf->dataChunk.waveformData = malloc(wavBuf->dataChunk.subChunk2Size);
+            if (!wavBuf->dataChunk.waveformData) {
                 ret = SL_FAIL;
                 goto bufCleanup;
             }
 
-            blocksRead = fread(temp_data, wavBuf->dataChunk.subChunk2Size, 1, file);
+            // Ensure the buffer size is even
+            blocksRead = fread(wavBuf->dataChunk.waveformData, wavBuf->dataChunk.subChunk2Size, 1, file);
             if (!blocksRead) {
                 ret = SL_INVALID_CHUNK_DATA_DATA;
                 goto bufCleanup;
@@ -479,34 +501,92 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
         goto bufCleanup;
     }
 
-    //fix the way data is handled
-    //copy data into buf
-    if(wavBuf->dataChunk.pcmType == SL_UNSIGNED_8PCM) {
-        wavBuf->dataChunk.waveformData = malloc(wavBuf->dataChunk.subChunk2Size);
-        if(!usingRIFX) memcpy(wavBuf->dataChunk.waveformData, temp_data, wavBuf->dataChunk.subChunk2Size);
-        else {
-            //memcpy... BUT IN REVERSE?!?!
-            SLullong len = wavBuf->dataChunk.subChunk2Size;
-            SLuchar *d = wavBuf->dataChunk.waveformData + len - 1;
-            const SLuchar *s = (SLuchar*)temp_data;
-            while (len--) *d-- = *s++;
-        }
-    } else {
-        wavBuf->dataChunk.waveformData_signed = malloc(wavBuf->dataChunk.subChunk2Size);
-        if(!usingRIFX) memcpy(wavBuf->dataChunk.waveformData_signed, temp_data, wavBuf->dataChunk.subChunk2Size);
-        else {
-            //memcpy... BUT IN REVERSE?!?!
-            SLullong len = wavBuf->dataChunk.subChunk2Size;
-            SLchar *d = wavBuf->dataChunk.waveformData_signed + len - 1;
-            const SLchar *s = (SLchar*)temp_data;
-            while (len--) *d-- = *s++;
+    //we need to reverse each sample
+    if(usingRIFX) {
+        switch (wavBuf->dataChunk.pcmType) {
+            case SL_UNSIGNED_8PCM:  {
+                if (wavBuf->dataChunk.subChunk2Size % 2 != 0) {
+                    ret = SL_INVALID_CHUNK_DATA_DATA;
+                    goto bufCleanup;
+                }
+                break;
+            }
+            case SL_SIGNED_16PCM: {
+                if (wavBuf->dataChunk.subChunk2Size % 2 != 0) {
+                    ret = SL_INVALID_CHUNK_DATA_DATA;
+                    goto bufCleanup;
+                }
+                SLshort* data = (SLshort*) wavBuf->dataChunk.waveformData;
+                SLullong len = wavBuf->dataChunk.subChunk2Size / 2;
+                // flip endian-ness of each short
+                for(SLullong i = 0; i < len; ++i) {
+                    data[i] = sl_flip_endian_short(data[i]);
+                }
+                break;
+            }
+            case SL_SIGNED_24PCM: {
+                if (wavBuf->dataChunk.subChunk2Size % 3 != 0) {
+                    ret = SL_INVALID_CHUNK_DATA_DATA;
+                    goto bufCleanup;
+                }
+                SLchar* data = (SLchar*) wavBuf->dataChunk.waveformData;
+                SLullong len = wavBuf->dataChunk.subChunk2Size / 3;
+                // flip enidan-ness of each 3 byte chunk...
+                for(SLullong i = 0; i < len; ++i) {
+                    SLchar temp = data[i*3];
+                    data[i*3] = data[i*3+2];
+                    data[i*3+2] = temp;
+                }
+                break;
+            }
+            case SL_SIGNED_32PCM: {
+                if (wavBuf->dataChunk.subChunk2Size % 2 != 0) {
+                    ret = SL_INVALID_CHUNK_DATA_DATA;
+                    goto bufCleanup;
+                }
+                SLint* data = (SLint*) wavBuf->dataChunk.waveformData;
+                SLullong len = wavBuf->dataChunk.subChunk2Size / 4;
+                // flip endian-ness of each int
+                for(SLullong i = 0; i < len; ++i) {
+                    data[i] = sl_flip_endian_int(data[i]);
+                }
+                break;
+            }
+            case SL_FLOAT_32PCM: {
+                if (wavBuf->dataChunk.subChunk2Size % 2 != 0) {
+                    ret = SL_INVALID_CHUNK_DATA_DATA;
+                    goto bufCleanup;
+                }
+                SLfloat* data = (SLfloat*) wavBuf->dataChunk.waveformData;
+                SLullong len = wavBuf->dataChunk.subChunk2Size / 4;
+                // flip endian-ness of each float
+                for(SLullong i = 0; i < len; ++i) {
+                    data[i] = sl_flip_endian_float(data[i]);
+                }
+                break;
+            }
+            case SL_FLOAT_64PCM: {
+                if (wavBuf->dataChunk.subChunk2Size % 2 != 0) {
+                    ret = SL_INVALID_CHUNK_DATA_DATA;
+                    goto bufCleanup;
+                }
+                SLdouble* data = (SLdouble*) wavBuf->dataChunk.waveformData;
+                SLullong len = wavBuf->dataChunk.subChunk2Size / 8;
+                // flip endian-ness of each double(we use double cause its 64 i think)
+                for(SLullong i = 0; i < len; ++i) {
+                    data[i] = sl_flip_endian_double(data[i]);
+                }
+                break;
+            }
+
+            default:
+                ret = SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
+                goto bufCleanup;
+                break;
         }
     }
 
-
-    free(temp_data);
-
-    if (wavBuf->dataChunk.waveformData_signed || wavBuf->dataChunk.waveformData) goto fileCleanup;
+    if (wavBuf->dataChunk.waveformData) goto fileCleanup;
     else {
         ret = SL_FAIL;
         goto bufCleanup;
@@ -515,13 +595,9 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     bufCleanup:
         if (wavBuf) {
             free(wavBuf->dataChunk.waveformData);
-            free(wavBuf->dataChunk.waveformData_signed);
             wavBuf->dataChunk.waveformData = NULL;
-            wavBuf->dataChunk.waveformData_signed = NULL;
         }
         free(wavBuf);
-        free(temp_data);
-        temp_data = NULL;
         wavBuf = NULL;
     fileCleanup:
         fclose(file);
@@ -531,14 +607,11 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
 
 void sl_free_wave_file(SL_WAV_FILE* buf) {
     if(buf) {
-        free(buf->dataChunk.waveformData_signed);
         free(buf->dataChunk.waveformData);
         buf->dataChunk.waveformData = NULL;
-        buf->dataChunk.waveformData_signed = NULL;
         free(buf);
     }
 }
-
 
 SLenum sl_init(void) {
     //quickly check the endianness of the system
@@ -594,6 +667,54 @@ SLuint sl_buf_to_native_uint(const SLuchar* buf, SLuint bufLen) {
         value = buf[3] | (buf[2] << 8) | (buf[1] << 16) | (buf[0] << 24);
     }
     return value;
+}
+
+SLshort sl_flip_endian_short(SLshort s) {
+    // simple bitwise stuff to flip the endianness
+    return (s >> 8) | (s << 8);
+}
+
+SLint sl_flip_endian_int(SLint i) {
+    // simple bitwise stuff to flip the endianness
+    return ((i >> 24) & 0xff) |
+           ((i << 8) & 0xff0000) |
+           ((i >> 8) & 0xff00) |
+           ((i << 24) & 0xff000000);
+}
+
+SLfloat sl_flip_endian_float(SLfloat f) {
+    // i love c because of this right here
+    unsigned long num_int;
+    memcpy(&num_int, &f, sizeof(float));
+
+    // simple bitwise stuff to flip the endianness
+    unsigned long swapped_int = ((num_int >> 24) & 0xff) |
+                                ((num_int << 8) & 0xff0000) |
+                                ((num_int >> 8) & 0xff00) |
+                                ((num_int << 24) & 0xff000000);
+    float swapped;
+    memcpy(&swapped, &swapped_int, sizeof(float));
+    return swapped;
+}
+
+SLdouble sl_flip_endian_double(SLdouble d) {
+    // i love c because of this right here
+    uint64_t num_int;
+    memcpy(&num_int, &d, sizeof(double));
+
+    // simple bitwise stuff to flip the endianness
+    uint64_t swapped_int = ((num_int >> 56) & 0x00000000000000ff) |
+                           ((num_int >> 40) & 0x000000000000ff00) |
+                           ((num_int >> 24) & 0x0000000000ff0000) |
+                           ((num_int >> 8)  & 0x00000000ff000000) |
+                           ((num_int << 8)  & 0x000000ff00000000) |
+                           ((num_int << 24) & 0x0000ff0000000000) |
+                           ((num_int << 40) & 0x00ff000000000000) |
+                           ((num_int << 56) & 0xff00000000000000);
+
+    double swapped;
+    memcpy(&swapped, &swapped_int, sizeof(double));
+    return swapped;
 }
 
 #ifdef __cplusplus
