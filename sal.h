@@ -245,7 +245,7 @@ static SLenum sl_is_wave_file(SLstr path);
  * @param bufLen - Length of SLuchar buffer to convert.
  * @return The value of the buffer represented as a SLushort taking into account the system's native endian-ness. Returns zero if it fails. I know it's not helpful, but you can debug!
  */
-static SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLuint bufLen);
+static SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen);
 
 /**
  * @brief Converts a SLuchar* buf to a SLuint, but takes into account the system's native endian-ness.
@@ -253,7 +253,7 @@ static SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLuint bufLen);
  * @param bufLen - Length of SLuchar buffer to convert.
  * @return The value of the buffer represented as a SLuint taking into account the system's native endian-ness. Returns zero if it fails. I know it's not helpful, but you can debug!
  */
-static SLuint sl_buf_to_native_uint(const SLuchar* buf, SLuint bufLen);
+static SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen);
 
 /**
  * @brief Flips the endian-ness of a SLshort.
@@ -363,6 +363,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr) {
     exit:
         return ret;
 }
+
 SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
     const SLuchar riffID_bytes[4] = {0x52, 0x49, 0x46, 0x46};
     const SLuchar rifxID_bytes[4] = {0x52, 0x49, 0x46, 0x58};
@@ -667,7 +668,6 @@ void sl_free_wave_file(SL_WAV_FILE** bufPtr) {
     }
 }
 
-
 SLenum sl_init(void) {
     //quickly check the endianness of the system
     int n = 1;
@@ -700,7 +700,7 @@ SLenum sl_is_wave_file(SLstr path) {
     return res;
 }
 
-SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLuint bufLen) {
+SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen) {
     //who needs comments, am i right?
     if(!buf || bufLen < 2) return 0;
 
@@ -713,7 +713,7 @@ SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLuint bufLen) {
     return value;
 }
 
-SLuint sl_buf_to_native_uint(const SLuchar* buf, SLuint bufLen) {
+SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen) {
     if(!buf || bufLen < 4) return 0;
 
     SLuint value = 0;
