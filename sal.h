@@ -10,9 +10,15 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
+    //todo pad structs before release
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////// Controls if you want to use the OpenAL wrapper. Comment it out if you don't want to use it. ///////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#define SL_OPENAL_WRAPPER
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////// Include Platform Specific Headers and define some platform specific things. ///////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #ifdef _WIN32
 //i know what im doing microsoft pls leave me alone
 #pragma warning(disable : 4996)
@@ -39,19 +45,57 @@ extern "C" {
 #define SLdouble double
 #define SLstr const char*
 #define SLvoid void*
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////// Tells us the native endian-ness of the system so we don't have to convert every time. ///////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+///////////////// Tells the native endian-ness of the system ///////////////////
+////////////////////////////////////////////////////////////////////////////////
 static SLbool sysEndianness = 0;
+
+/////////////////////////////////////////////////////////////////////////////
+///////////////// Simple Audio Library Global Definitions ///////////////////
+/////////////////////////////////////////////////////////////////////////////
+
+#define BIG_ENDIAN 1
+#define LITTLE_ENDIAN 0
+#define SL_SUCCESS 69420
+#define SL_FAIL 66666
+#define SL_INVALID_VALUE 61616
+
+/////////////////////////////////////////////////////////////////////////////////////
+///////////////// Simple Audio Library Global Function Defintions ///////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+/**
+ * @brief Sound library init function. You MUST call this even when using the wave file parser.
+ * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
+ */
+static SLenum sl_init(void);
+
+/**
+ * @brief Sound library cleanup function. You should call this when your app execution ends.
+ * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
+ */
+static SLenum sl_cleanup(void);
+
+//////////////////////////////////////////////////////////////////////////////////////////
+///////////////// Simple Audio Library Global Function Implementations ///////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+SLenum sl_init(void) {
+    //quickly check the endianness of the system
+    int n = 1;
+    sysEndianness = *(char*)&n == 1 ? LITTLE_ENDIAN : BIG_ENDIAN;
+
+    return SL_SUCCESS;
+}
+
+SLenum sl_cleanup(void) {
+
+    return SL_SUCCESS;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Return Code Definitions ///////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-#define SL_SUCCESS 69420
-
-#define SL_FAIL 66666
-#define SL_INVALID_VALUE 61616
 #define SL_FILE_ERROR 62636
 #define SL_INVALID_WAVE_FORMAT 63293
 
@@ -72,13 +116,9 @@ static SLbool sysEndianness = 0;
 #define SL_INVALID_CHUNK_DATA_SIZE 30777
 #define SL_INVALID_CHUNK_DATA_DATA 30666
 
-
 ///////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Useful types ///////////////////
 ///////////////////////////////////////////////////////////////////
-
-#define BIG_ENDIAN 1
-#define LITTLE_ENDIAN 0
 
 #define SL_UNSIGNED_8PCM 1
 #define SL_SIGNED_16PCM 2
@@ -159,25 +199,13 @@ typedef struct sl_wav_file {
 ///////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief Sound library init function. You MUST call this even when using the wave file parser.
- * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
- */
-static SLenum sl_init(void);
-
-/**
- * @brief Sound library cleanup function. You should call this when your app execution ends.
- * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
- */
-static SLenum sl_cleanup(void);
-
-/**
  * @brief Parses wave file at the path.
  * For more information on types of WAVE files supported, go to the Github.
  * @param path - Path of WAVE file to parse.
  * @param wavBufPtr - Buffer for the WAVE file.
  * @return SL_SUCCESS if succeeded. There are many useful return codes documented on the Github so you can debug anything else that happens.
  */
-static SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr);
+static SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr);
 
 /**
  * @brief Reads WAVE descriptor chunk. This is a helper function and should not be used except by SAL.
@@ -288,7 +316,7 @@ static SLdouble sl_flip_endian_double(SLdouble d);
 ///////////////////////////////////////////////////////////////////////////////
 
 //TODO test rifx support.
-SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr) {
+SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr) {
     SLenum ret = SL_SUCCESS;
 
     SL_WAV_FILE* wavBuf = NULL;
@@ -369,7 +397,7 @@ SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
     const SLuchar rifxID_bytes[4] = {0x52, 0x49, 0x46, 0x58};
     const SLuchar waveID_bytes[4] = {0x57, 0x41, 0x56, 0x45};
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
-    SLullong blocksRead = 0;
+    SLullong blocksRead;
 
     //read and validate chunkID
     blocksRead = fread(wavBuf->descriptorChunk.descriptorId, 4, 1, file);
@@ -401,10 +429,9 @@ SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
 
 SLenum sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf) {
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
-    SLuchar buffer2[2] = {0x00, 0x00};
     const SLuchar fmtID_bytes [4] = {0x66, 0x6d, 0x74, 0x20};
     const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
-    SLullong blocksRead = 0;
+    SLullong blocksRead;
     SLbool foundFmt = 0;
     SLbool foundData = 0;
 
@@ -447,7 +474,7 @@ SLenum sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf) {
         if(foundMatch) {
             blocksRead = fread(buffer4, 4, 1, file);
         } else {
-            SLullong size = 0;
+            SLullong size;
             blocksRead = fread(buffer4, 4, 1, file);
             if (!blocksRead)
                 return SL_INVALID_WAVE_FORMAT;
@@ -473,7 +500,7 @@ SLenum sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf) {
 SLenum sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
     SLuchar buffer2[2] = {0x00, 0x00};
-    SLullong blocksRead = 0;
+    SLullong blocksRead;
 
     //read and validate fmt chunk size
     blocksRead = fread(buffer4, 4, 1, file);
@@ -565,7 +592,7 @@ SLenum sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
 
 SLenum sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
-    SLullong blocksRead = 0;
+    SLullong blocksRead;
     //read data chunk size
     blocksRead = fread(buffer4, 4, 1, file);
     wavBuf->dataChunk.subChunk2Size = sl_buf_to_native_uint(buffer4, 4);
@@ -668,19 +695,6 @@ void sl_free_wave_file(SL_WAV_FILE** bufPtr) {
     }
 }
 
-SLenum sl_init(void) {
-    //quickly check the endianness of the system
-    int n = 1;
-    sysEndianness = *(char*)&n == 1 ? LITTLE_ENDIAN : BIG_ENDIAN;
-
-    return SL_SUCCESS;
-}
-
-SLenum sl_cleanup(void) {
-
-    return SL_SUCCESS;
-}
-
 SLenum sl_is_wave_file(SLstr path) {
     SLstr wavExtension = ".wav";
     SLstr waveExtension = ".wave";
@@ -704,7 +718,7 @@ SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen) {
     //who needs comments, am i right?
     if(!buf || bufLen < 2) return 0;
 
-    SLuint value = 0;
+    SLuint value;
     if(sysEndianness == LITTLE_ENDIAN) {
         value = buf[0] | (buf[1] << 8);
     } else {
@@ -716,7 +730,7 @@ SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen) {
 SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen) {
     if(!buf || bufLen < 4) return 0;
 
-    SLuint value = 0;
+    SLuint value;
     if(sysEndianness == LITTLE_ENDIAN) {
         value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
     } else {
@@ -772,6 +786,50 @@ SLdouble sl_flip_endian_double(SLdouble d) {
     memcpy(&swapped, &swapped_int, sizeof(double));
     return swapped;
 }
+
+/////////////////////////////////////////////////////////
+///////////////// OpenAL soft Wrapper ///////////////////
+/////////////////////////////////////////////////////////
+
+#ifdef SL_OPENAL_WRAPPER
+
+//todo remove if any unused
+#include <AL/al.h>
+#include <AL/al.h>
+#include <AL/alext.h>
+
+////////////////////////////////////////////////////////////////
+///////////////// Wrapper Struct Definitions ///////////////////
+////////////////////////////////////////////////////////////////
+typedef struct sl_sound {
+    SL_WAV_FILE* waveBuf;
+    SLfloat volume; // in % so 1.0 is 100%, 0.5 is 50% and so on.
+    SLfloat speed; // in % so 1.0 is 100%, 0.5 is 50% and so on.
+    SLbool mono;
+} SL_SOUND;
+
+//////////////////////////////////////////////////////////////////
+///////////////// Wrapper Function Definitions ///////////////////
+//////////////////////////////////////////////////////////////////
+
+//todo add comments
+
+static SL_SOUND* sl_gen_sound(SLstr path, SLfloat volume, SLfloat speed, SLbool mono);
+
+static SL_SOUND* sl_gen_sound_a(SL_WAV_FILE* waveBuf, SLfloat volume, SLfloat speed, SLbool mono);
+
+static SLenum sl_play_sound(SL_SOUND* sound);
+
+static SLstr* sl_get_devices(void);
+
+static void sl_destroy_sound();
+
+//////////////////////////////////////////////////////////////////////
+///////////////// Wrapper Function Implementations ///////////////////
+//////////////////////////////////////////////////////////////////////
+
+
+#endif
 
 #ifdef __cplusplus
 }
