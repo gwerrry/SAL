@@ -248,6 +248,8 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr) {
     SLenum ret = SL_SUCCESS;
 
     SL_WAV_FILE* wavBuf = NULL;
+    FILE* file;
+
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
     SLuchar buffer2[2] = {0x00, 0x00};
     const SLuchar riffID_bytes[4] = {0x52, 0x49, 0x46, 0x46};
@@ -274,7 +276,7 @@ SLenum sl_parse_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr) {
     }
 
     // try to open file
-    FILE* file = fopen(path, "rb");
+    file = fopen(path, "rb");
     if (file == NULL) {
         ret = SL_FILE_ERROR;
         goto exit;
