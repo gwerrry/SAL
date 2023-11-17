@@ -632,7 +632,7 @@ SLenum sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
 }
 
 SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
-    if(wavBuf->descriptorChunk.usingRIFX) {
+    if(wavBuf->descriptorChunk.usingRIFX && sysEndianness == LITTLE_ENDIAN) {
         switch (wavBuf->dataChunk.pcmType) {
             case SL_UNSIGNED_8PCM:
                 break;
@@ -797,7 +797,6 @@ SLdouble sl_flip_endian_double(SLdouble d) {
 #include <AL/al.h>
 #include <AL/al.h>
 #include <AL/alext.h>
-#include <AL/alut.h>
 
 ////////////////////////////////////////////////////////////////
 ///////////////// Wrapper Struct Definitions ///////////////////
@@ -823,11 +822,13 @@ typedef struct sl_sound {
 //////////////////////////////////////////////////////////////////
 
 //todo add comments
-static SLenum sl_play_sound(SL_SOUND* sound);
-
 static SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device);
 
+static SLenum sl_play_sound(SL_SOUND* sound);
+
 static SLenum sl_parse_sound_format(SL_SOUND* sound);
+
+static void sl_stop_sound(SL_SOUND* sound);
 
 static void sl_destroy_sound(SL_SOUND** sound);
 
@@ -843,28 +844,67 @@ static void sl_destroy_device_list(SLstr** devices);
 ///////////////// Wrapper Function Implementations ///////////////////
 //////////////////////////////////////////////////////////////////////
 
+SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
+    if(!sound) return SL_FAIL;
+    // Initialize OpenAL
+    sound->device = alcOpenDevice(device);
+    sound->context = alcCreateContext(sound->device, NULL);
+    alcMakeContextCurrent(sound->context);
+
+    // Generate a buffer
+    alGenBuffers(1, &sound->buffer);
+
+    alBufferData(sound->buffer, sound->format, sound->waveBuf, sound->size, sound->freq);
+
+    // Generate a source
+    alGenSources(1, &sound->source);
+
+    // Queue the buffer for playback
+    alSourceQueueBuffers(sound->source, 1, &sound->buffer);
+
+    // Start playback
+    alSourcePlay(sound->source);
+
+    // Wait for playback to finish
+    ALint state;
+    do {
+        alGetSourcei(sound->source, AL_SOURCE_STATE, &state);
+    } while (state == AL_PLAYING);
+
+    sl_stop_sound(sound);
+
+    return SL_SUCCESS;
+}
+
 SLenum sl_play_sound(SL_SOUND* sound) {
     return sl_play_sound_a(sound, NULL);
 }
 
-void sl_destroy_sound(SL_SOUND** sound) {
+void sl_stop_sound(SL_SOUND* sound) {
     // Stop the source and delete the source and buffer
-    alSourceStop((*sound)->source);
-    alDeleteSources(1, &((*sound)->source));
-    alDeleteBuffers(1, &((*sound)->buffer));
+    alSourceStop(sound->source);
+    alDeleteSources(1, &sound->source);
+    alDeleteBuffers(1, &sound->buffer);
 
     // Destroy the context and close the device
     alcMakeContextCurrent(NULL);
-    alcDestroyContext((*sound)->context);
-    alcCloseDevice((*sound)->device);
+    alcDestroyContext(sound->context);
+    alcCloseDevice(sound->device);
+}
 
-    //free wav file
-    sl_free_wave_file(&((*sound)->waveBuf));
-    (*sound)->waveBuf = NULL;
+void sl_destroy_sound(SL_SOUND** sound) {
+    if(sound && *sound) {
+        //stop sound
+        sl_stop_sound(*sound);
 
-    //free sound
-    free(*sound);
-    *sound = NULL;
+        //free wav file
+        sl_free_wave_file(&((*sound)->waveBuf));
+        (*sound)->waveBuf = NULL;
+
+        //free sound
+        free(*sound);
+        *sound = NULL;
+    }
 }
 
 SL_SOUND* sl_gen_sound_a(SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
@@ -876,6 +916,15 @@ SL_SOUND* sl_gen_sound_a(SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
         ret->waveBuf = waveBuf;
         ret->gain    = gain;
         ret->pitch   = pitch;
+        ret->freq    = waveBuf->formatChunk.sampleRate;
+        ret->size    = waveBuf->dataChunk.subChunk2Size;
+
+        sl_parse_sound_format(ret);
+
+        //todo get duration
+        ret->duration;
+
+
         return ret;
     }
 
