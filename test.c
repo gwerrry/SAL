@@ -20,17 +20,17 @@ int main(void) {
     fgets(input, 256, stdin);
     input[strcspn(input, "\n")] = 0;
 
-    SL_WAV_FILE *buf = NULL;
+    SL_WAV_FILE buf;
     SLenum out = sl_read_wave_file(input, &buf);
 
-    if(out == SL_SUCCESS || buf) {
+    if(out == SL_SUCCESS) {
         printf("Successfully parsed WAVE file at \"%s\".\n", input);
-        sl_free_wave_file(&buf);
+        sl_cleanup_wave_file(&buf);
     } else {
         printf("Failed to parse WAVE file at \"%s\".\n", input);
     }
 
-
+    free(input);
     sl_cleanup();
     return out;
 }
@@ -58,15 +58,18 @@ int main(void) {
     fgets(input, 256, stdin);
     input[strcspn(input, "\n")] = 0;
 
-    SL_WAV_FILE *buf = NULL;
+    SL_WAV_FILE buf;
     SLenum out = sl_read_wave_file(input, &buf);
 
-    if(out == SL_SUCCESS && buf) {
+    if(out == SL_SUCCESS) {
         printf("Successfully parsed WAVE file at \"%s\".\n", input);
-        SL_SOUND* sound = NULL;
-        out = sl_gen_sound_a(&sound, buf, 1.0f, 1.0f);
-        if(out == SL_SUCCESS && sound) {
-            sl_play_sound_a(sound, NULL);
+
+        SL_SOUND sound;
+        out = sl_gen_sound_a(&sound, &buf, 1.0f, 1.0f);
+
+        if(out == SL_SUCCESS) {
+
+            sl_play_sound_a(&sound, NULL);
         }
 
         sl_destroy_sound(&sound);
@@ -74,6 +77,7 @@ int main(void) {
         printf("Failed to parse WAVE file at \"%s\".\n", input);
     }
 
+    free(input);
     sl_cleanup();
     return out;
 }
