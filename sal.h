@@ -404,13 +404,12 @@ SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
     if (!blocksRead)
         return SL_INVALID_CHUNK_DESCRIPTOR_ID;
 
-    if (memcmp(wavBuf->descriptorChunk.descriptorId, riffID_bytes, 4) != 0)
+    if (memcmp(wavBuf->descriptorChunk.descriptorId, riffID_bytes, 4) == 0)
         wavBuf->descriptorChunk.usingRIFX = 0;
-    else if (memcmp(wavBuf->descriptorChunk.descriptorId, rifxID_bytes, 4) != 0)
+    else if (memcmp(wavBuf->descriptorChunk.descriptorId, rifxID_bytes, 4) == 0)
         wavBuf->descriptorChunk.usingRIFX = 1;
     else
         return SL_INVALID_CHUNK_DESCRIPTOR_ID;
-
 
     //read and validate chunk size
     blocksRead = fread(buffer4, 4, 1, file);
@@ -787,16 +786,27 @@ SLdouble sl_flip_endian_double(SLdouble d) {
     return swapped;
 }
 
-/////////////////////////////////////////////////////////
-///////////////// OpenAL soft Wrapper ///////////////////
-/////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+///////////////// OpenAL Wrapper ///////////////////
+////////////////////////////////////////////////////
 
 #ifdef SL_OPENAL_WRAPPER
 
 //todo remove if any unused
 #include <AL/al.h>
-#include <AL/al.h>
+#include <AL/alc.h>
 #include <AL/alext.h>
+#include <AL/alut.h>
+
+/////////////////////////////////////////////////////////
+///////////////// Wrapper Definitions ///////////////////
+/////////////////////////////////////////////////////////
+#define SL_MONO 1
+#define SL_STEREO 2
+#define SL_QUAD 3
+#define SL_5_1 4
+#define SL_6_1 5
+#define SL_7_1 6
 
 ////////////////////////////////////////////////////////////////
 ///////////////// Wrapper Struct Definitions ///////////////////
@@ -828,13 +838,25 @@ static SLenum sl_play_sound(SL_SOUND* sound);
 
 static SLenum sl_parse_sound_format(SL_SOUND* sound);
 
+static SLenum sl_parse_mono(SL_SOUND* sound);
+
+static SLenum sl_parse_stereo(SL_SOUND* sound);
+
+static SLenum sl_parse_quad(SL_SOUND* sound);
+
+static SLenum sl_parse_51(SL_SOUND* sound);
+
+static SLenum sl_parse_61(SL_SOUND* sound);
+
+static SLenum sl_parse_71(SL_SOUND* sound);
+
 static void sl_stop_sound(SL_SOUND* sound);
 
 static void sl_destroy_sound(SL_SOUND** sound);
 
-static SL_SOUND* sl_gen_sound_a(SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
+static SLenum sl_gen_sound_a(SL_SOUND** sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
 
-static SL_SOUND* sl_gen_sound(SLstr path, SLfloat gain, SLfloat pitch);
+static SLenum sl_gen_sound(SL_SOUND** sound, SLstr path, SLfloat gain, SLfloat pitch);
 
 static SLstr* sl_get_devices(void);
 
@@ -845,6 +867,7 @@ static void sl_destroy_device_list(SLstr** devices);
 //////////////////////////////////////////////////////////////////////
 
 SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
+
     if(!sound) return SL_FAIL;
     // Initialize OpenAL
     sound->device = alcOpenDevice(device);
@@ -854,6 +877,7 @@ SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
     // Generate a buffer
     alGenBuffers(1, &sound->buffer);
 
+    //Buffer stuff to data
     alBufferData(sound->buffer, sound->format, sound->waveBuf, sound->size, sound->freq);
 
     // Generate a source
@@ -866,11 +890,15 @@ SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
     alSourcePlay(sound->source);
 
     // Wait for playback to finish
+    alutSleep(sound->duration);
+
+    //ensure it's done playing
     ALint state;
     do {
         alGetSourcei(sound->source, AL_SOURCE_STATE, &state);
     } while (state == AL_PLAYING);
 
+    // cleanup
     sl_stop_sound(sound);
 
     return SL_SUCCESS;
@@ -880,7 +908,162 @@ SLenum sl_play_sound(SL_SOUND* sound) {
     return sl_play_sound_a(sound, NULL);
 }
 
+SLenum sl_parse_sound_format(SL_SOUND* sound) {
+    switch(sound->waveBuf->formatChunk.numChannels) {
+        case 1: {
+            return sl_parse_mono(sound);
+            break;
+        }
+        case 2: {
+            return sl_parse_stereo(sound);
+            break;
+        }
+        case 4: {
+            return sl_parse_quad(sound);
+            break;
+        }
+        case 6: {
+            return sl_parse_51(sound);
+            break;
+        }
+        case 7: {
+            return sl_parse_61(sound);
+            break;
+        }
+        case 8: {
+            return sl_parse_71(sound);
+            break;
+        }
+        default: return SL_FAIL;
+    }
+}
+
+SLenum sl_parse_mono(SL_SOUND* sound) {
+    switch(sound->waveBuf->dataChunk.pcmType) {
+        case SL_UNSIGNED_8PCM: {
+            sound->format = AL_FORMAT_MONO8;
+            break;
+        }
+        case SL_SIGNED_16PCM: {
+            sound->format = AL_FORMAT_MONO16;
+            break;
+        }
+        case SL_FLOAT_32PCM: {
+            sound->format = AL_FORMAT_MONO_FLOAT32;
+            break;
+        }
+        default:
+            return SL_FAIL;
+    }
+    return SL_SUCCESS;
+}
+
+SLenum sl_parse_stereo(SL_SOUND* sound) {
+    switch(sound->waveBuf->dataChunk.pcmType) {
+        case SL_UNSIGNED_8PCM: {
+            sound->format = AL_FORMAT_STEREO8;
+            break;
+        }
+        case SL_SIGNED_16PCM: {
+            sound->format = AL_FORMAT_STEREO16;
+            break;
+        }
+        case SL_FLOAT_32PCM: {
+            sound->format = AL_FORMAT_STEREO_FLOAT32;
+            break;
+        }
+        default:
+            return SL_FAIL;
+    }
+    return SL_SUCCESS;
+}
+
+SLenum sl_parse_quad(SL_SOUND* sound) {
+    switch(sound->waveBuf->dataChunk.pcmType) {
+        case SL_UNSIGNED_8PCM: {
+            sound->format = AL_FORMAT_QUAD8;
+            break;
+        }
+        case SL_SIGNED_16PCM: {
+            sound->format = AL_FORMAT_QUAD16;
+            break;
+        }
+        case SL_SIGNED_32PCM: {
+            sound->format = AL_FORMAT_QUAD32;
+            break;
+        }
+        case SL_FLOAT_32PCM: {
+            sound->format = AL_FORMAT_UHJ4CHN_FLOAT32_SOFT;
+            break;
+        }
+        default:
+            return SL_FAIL;
+    }
+    return SL_SUCCESS;
+}
+
+SLenum sl_parse_51(SL_SOUND* sound) {
+    switch(sound->waveBuf->dataChunk.pcmType) {
+        case SL_UNSIGNED_8PCM: {
+            sound->format = AL_FORMAT_51CHN8;
+            break;
+        }
+        case SL_SIGNED_16PCM: {
+            sound->format = AL_FORMAT_51CHN16;
+            break;
+        }
+        case SL_SIGNED_32PCM: {
+            sound->format = AL_FORMAT_51CHN32;
+            break;
+        }
+        default:
+            return SL_FAIL;
+    }
+    return SL_SUCCESS;
+}
+
+SLenum sl_parse_61(SL_SOUND* sound) {
+    switch(sound->waveBuf->dataChunk.pcmType) {
+        case SL_UNSIGNED_8PCM: {
+            sound->format = AL_FORMAT_61CHN8;
+            break;
+        }
+        case SL_SIGNED_16PCM: {
+            sound->format = AL_FORMAT_61CHN16;
+            break;
+        }
+        case SL_SIGNED_32PCM: {
+            sound->format = AL_FORMAT_61CHN32;
+            break;
+        }
+        default:
+            return SL_FAIL;
+    }
+    return SL_SUCCESS;
+}
+
+SLenum sl_parse_71(SL_SOUND* sound) {
+    switch(sound->waveBuf->dataChunk.pcmType) {
+        case SL_UNSIGNED_8PCM: {
+            sound->format = AL_FORMAT_71CHN8;
+            break;
+        }
+        case SL_SIGNED_16PCM: {
+            sound->format = AL_FORMAT_71CHN16;
+            break;
+        }
+        case SL_SIGNED_32PCM: {
+            sound->format = AL_FORMAT_71CHN32;
+            break;
+        }
+        default:
+            return SL_FAIL;
+    }
+    return SL_SUCCESS;
+}
+
 void sl_stop_sound(SL_SOUND* sound) {
+    printf("uh oh");
     // Stop the source and delete the source and buffer
     alSourceStop(sound->source);
     alDeleteSources(1, &sound->source);
@@ -893,6 +1076,7 @@ void sl_stop_sound(SL_SOUND* sound) {
 }
 
 void sl_destroy_sound(SL_SOUND** sound) {
+    printf("omg");
     if(sound && *sound) {
         //stop sound
         sl_stop_sound(*sound);
@@ -907,40 +1091,43 @@ void sl_destroy_sound(SL_SOUND** sound) {
     }
 }
 
-SL_SOUND* sl_gen_sound_a(SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
-    SL_SOUND* ret = NULL;
+SLenum sl_gen_sound_a(SL_SOUND** sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
 
-    if(waveBuf) {
-        ret = (SL_SOUND*)malloc(sizeof(SL_SOUND));
-        if(!ret) return ret;
-        ret->waveBuf = waveBuf;
-        ret->gain    = gain;
-        ret->pitch   = pitch;
-        ret->freq    = waveBuf->formatChunk.sampleRate;
-        ret->size    = waveBuf->dataChunk.subChunk2Size;
+    if(!sound || !waveBuf) return SL_FAIL;
+    *sound = NULL;
 
-        sl_parse_sound_format(ret);
+    *sound = (SL_SOUND *) malloc(sizeof(SL_SOUND));
 
-        //todo get duration
-        ret->duration;
+    if (!*sound) return SL_FAIL;
+    (*sound)->waveBuf = waveBuf;
+    (*sound)->gain = gain;
+    (*sound)->pitch = pitch;
+    (*sound)->freq = waveBuf->formatChunk.sampleRate;
+    (*sound)->size = waveBuf->dataChunk.subChunk2Size;
+    (*sound)->duration = ((*sound)->size / (*sound)->freq) * pitch;
 
-
-        return ret;
+    SLenum err = sl_parse_sound_format(*sound);
+    if(err != SL_SUCCESS) {
+        free(*sound);
+        return err;
     }
 
-    return ret;
+    return SL_SUCCESS;
 }
 
-SL_SOUND* sl_gen_sound(SLstr path, SLfloat gain, SLfloat pitch) {
-    SL_SOUND* ret = NULL;
-    SL_WAV_FILE *buf = NULL;
-    SLenum out = sl_read_wave_file(path, &buf);
+SLenum sl_gen_sound(SL_SOUND** sound, SLstr path, SLfloat gain, SLfloat pitch) {
+    if(!sound) {
+        *sound = NULL;
+        SL_WAV_FILE *buf = NULL;
+        SLenum out = sl_read_wave_file(path, &buf);
 
-    if(out == SL_SUCCESS || buf) {
-        ret = sl_gen_sound_a(buf, gain, pitch);
+        if (out == SL_SUCCESS || buf) {
+            out = sl_gen_sound_a(&(*sound), buf, gain, pitch);
+        }
+
+        return out;
     }
-
-    return ret;
+    return SL_FAIL;
 }
 
 SLstr* sl_get_devices(void) {
