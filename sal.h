@@ -802,11 +802,20 @@ SLdouble sl_flip_endian_double(SLdouble d) {
 ////////////////////////////////////////////////////////////////
 ///////////////// Wrapper Struct Definitions ///////////////////
 ////////////////////////////////////////////////////////////////
+
 typedef struct sl_sound {
     SL_WAV_FILE* waveBuf;
-    SLfloat volume; // in % so 1.0 is 100%, 0.5 is 50% and so on.
-    SLfloat speed; // in % so 1.0 is 100%, 0.5 is 50% and so on.
-    SLbool mono;
+    ALfloat pitch; // in % so 1.0 is 100%, 0.5 is 50% and so on.
+    ALfloat gain; // in % so 1.0 is 100%, 0.5 is 50% and so on.
+
+    ALCdevice* device;
+    ALCcontext* context;
+    ALuint source;
+    ALuint buffer;
+    ALsizei size;
+    ALsizei freq;
+    ALenum format;
+    ALint duration;
 } SL_SOUND;
 
 //////////////////////////////////////////////////////////////////
@@ -814,21 +823,76 @@ typedef struct sl_sound {
 //////////////////////////////////////////////////////////////////
 
 //todo add comments
-
-static SL_SOUND* sl_gen_sound(SLstr path, SLfloat volume, SLfloat speed, SLbool mono);
-
-static SL_SOUND* sl_gen_sound_a(SL_WAV_FILE* waveBuf, SLfloat volume, SLfloat speed, SLbool mono);
-
 static SLenum sl_play_sound(SL_SOUND* sound);
+
+static SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device);
+
+static SLenum sl_parse_sound_format(SL_SOUND* sound);
+
+static void sl_destroy_sound(SL_SOUND** sound);
+
+static SL_SOUND* sl_gen_sound_a(SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
+
+static SL_SOUND* sl_gen_sound(SLstr path, SLfloat gain, SLfloat pitch);
 
 static SLstr* sl_get_devices(void);
 
-static void sl_destroy_sound();
-
 static void sl_destroy_device_list(SLstr** devices);
+
 //////////////////////////////////////////////////////////////////////
 ///////////////// Wrapper Function Implementations ///////////////////
 //////////////////////////////////////////////////////////////////////
+
+SLenum sl_play_sound(SL_SOUND* sound) {
+    return sl_play_sound_a(sound, NULL);
+}
+
+void sl_destroy_sound(SL_SOUND** sound) {
+    // Stop the source and delete the source and buffer
+    alSourceStop((*sound)->source);
+    alDeleteSources(1, &((*sound)->source));
+    alDeleteBuffers(1, &((*sound)->buffer));
+
+    // Destroy the context and close the device
+    alcMakeContextCurrent(NULL);
+    alcDestroyContext((*sound)->context);
+    alcCloseDevice((*sound)->device);
+
+    //free wav file
+    sl_free_wave_file(&((*sound)->waveBuf));
+    (*sound)->waveBuf = NULL;
+
+    //free sound
+    free(*sound);
+    *sound = NULL;
+}
+
+SL_SOUND* sl_gen_sound_a(SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
+    SL_SOUND* ret = NULL;
+
+    if(waveBuf) {
+        ret = (SL_SOUND*)malloc(sizeof(SL_SOUND));
+        if(!ret) return ret;
+        ret->waveBuf = waveBuf;
+        ret->gain    = gain;
+        ret->pitch   = pitch;
+        return ret;
+    }
+
+    return ret;
+}
+
+SL_SOUND* sl_gen_sound(SLstr path, SLfloat gain, SLfloat pitch) {
+    SL_SOUND* ret = NULL;
+    SL_WAV_FILE *buf = NULL;
+    SLenum out = sl_read_wave_file(path, &buf);
+
+    if(out == SL_SUCCESS || buf) {
+        ret = sl_gen_sound_a(buf, gain, pitch);
+    }
+
+    return ret;
+}
 
 SLstr* sl_get_devices(void) {
     if (alcIsExtensionPresent(NULL, "ALC_ENUMERATE_ALL_EXT") != AL_TRUE) return NULL;
@@ -881,6 +945,7 @@ void sl_destroy_device_list(SLstr** devices) {
         *devices = NULL;
     }
 }
+
 #endif
 
 #ifdef __cplusplus
