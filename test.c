@@ -1,4 +1,8 @@
 #include "sal.h"
+
+//#define PARSER_TEST
+#define AL_TEST
+#ifdef PARSER_TEST
 int main(void) {
     sl_init();
 
@@ -26,7 +30,20 @@ int main(void) {
         printf("Failed to parse WAVE file at \"%s\".\n", input);
     }
 
+
     sl_cleanup();
     return out;
 }
 
+#elif defined(AL_TEST)
+int main(void) {
+    SLstr* devices = sl_get_devices();
+    if (devices) {
+        for (SLullong i = 0; devices[i] != NULL; i++) {
+            printf("Device %llu: %s\n", i, devices[i]);
+        }
+        sl_destroy_device_list(&devices);
+    }
+    return SL_SUCCESS;
+}
+#endif

@@ -797,6 +797,7 @@ SLdouble sl_flip_endian_double(SLdouble d) {
 #include <AL/al.h>
 #include <AL/al.h>
 #include <AL/alext.h>
+#include <AL/alut.h>
 
 ////////////////////////////////////////////////////////////////
 ///////////////// Wrapper Struct Definitions ///////////////////
@@ -824,11 +825,62 @@ static SLstr* sl_get_devices(void);
 
 static void sl_destroy_sound();
 
+static void sl_destroy_device_list(SLstr** devices);
 //////////////////////////////////////////////////////////////////////
 ///////////////// Wrapper Function Implementations ///////////////////
 //////////////////////////////////////////////////////////////////////
 
+SLstr* sl_get_devices(void) {
+    if (alcIsExtensionPresent(NULL, "ALC_ENUMERATE_ALL_EXT") != AL_TRUE) return NULL;
 
+    SLstr devices = alcGetString(NULL, ALC_ALL_DEVICES_SPECIFIER);
+    if (!devices) return NULL;
+
+    SLstr device = devices;
+
+    SLullong numDevices = 0;
+    while (*device != '\0') {
+        device += strlen(device) + 1;
+        numDevices++;
+    }
+
+    // Allocate memory for the array of device names
+    SLstr* arr = (SLstr*)malloc((numDevices + 1) * sizeof(SLstr));
+    if (!arr) return NULL;
+
+    // Copy the device names into the array
+    device = devices;
+    for (SLullong i = 0; i < numDevices; i++) {
+        SLullong len = strlen(device);
+        arr[i] = strdup(device);
+        if (!arr[i]) {
+            // clean up and return NULL
+            for (SLullong j = 0; j < i; j++) {
+                free((void*)arr[j]);
+            }
+            free(arr);
+            return NULL;
+        }
+        device += len + 1;
+    }
+
+    // Null-terminate the array
+    arr[numDevices] = NULL;
+
+    return arr;
+}
+
+void sl_destroy_device_list(SLstr** devices) {
+    if (devices && *devices) {
+        // free device names
+        for (SLullong i = 0; (*devices)[i] != NULL; i++) {
+            free((void*)((*devices)[i]));  // Cast to void* cause const
+        }
+
+        free(*devices);
+        *devices = NULL;
+    }
+}
 #endif
 
 #ifdef __cplusplus
