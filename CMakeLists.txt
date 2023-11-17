@@ -24,10 +24,13 @@ if (WIN32)
     endif()
 endif()
 
-find_package(OpenAL CONFIG REQUIRED)
+find_package(OpenAL CONFIG REQUIRED) # comment out if you dont want to try with openal
+find_package(FreeALUT CONFIG REQUIRED) # comment out if you dont want to try with openal
 
 add_executable(${PROJECT_NAME}
         sal.h
         "test.c"
 )
-target_link_libraries(${PROJECT_NAME} PRIVATE OpenAL::OpenAL)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE OpenAL::OpenAL) # comment out if you dont want to try with openal
+target_link_libraries(${PROJECT_NAME} PRIVATE FreeALUT::alut) # comment out if you dont want to try with openal
