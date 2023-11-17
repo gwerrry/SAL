@@ -205,7 +205,13 @@ typedef struct sl_wav_file {
  * @param wavBufPtr - Buffer for the WAVE file.
  * @return SL_SUCCESS if succeeded. There are many useful return codes documented on the Github so you can debug anything else that happens.
  */
-static SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr);
+static SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
+
+/**
+ * @brief Frees the memory associated with the WAVE file.
+ * @param buf - Buffer of WAVE file to free.
+ */
+static void sl_cleanup_wave_file(SL_WAV_FILE* bufPtr);
 
 /**
  * @brief Reads WAVE descriptor chunk. This is a helper function and should not be used except by SAL.
@@ -253,12 +259,7 @@ static SLenum sl_validate_wave_data(SL_WAV_FILE* wavBuf);
  */
 static SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf);
 
-/**
- * @brief Frees the memory associated with the WAVE file.
- * Also sets the buf to NULL.
- * @param buf - Buffer of WAVE file to free.
- */
-static void sl_free_wave_file(SL_WAV_FILE** bufPtr);
+
 
 /**
  * @brief This is just for checking if the path provided ends with ".wav" or ".wave".
@@ -316,10 +317,10 @@ static SLdouble sl_flip_endian_double(SLdouble d);
 ///////////////////////////////////////////////////////////////////////////////
 
 //TODO test rifx support.
-SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr) {
+SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     SLenum ret = SL_SUCCESS;
+    memset(wavBuf, 0, sizeof(SL_WAV_FILE));
 
-    SL_WAV_FILE* wavBuf = NULL;
     FILE* file;
 
     //ensure pointers are good were just going to assume the user allocated stuff right
@@ -340,22 +341,6 @@ SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr) {
         ret = SL_FILE_ERROR;
         goto exit;
     }
-
-    // Allocate buf
-    *wavBufPtr = (SL_WAV_FILE*)calloc(1, sizeof(SL_WAV_FILE));
-    if (!(*wavBufPtr)) {
-        ret = SL_FAIL;
-        goto bufCleanup;
-    }
-
-    wavBuf = *wavBufPtr;
-
-    //
-    // Assign some stuff since we know buf has data now.
-    //
-    wavBuf->dataChunk.pcmType = 0;
-    wavBuf->formatChunk.extensionSize = 0;
-    wavBuf->dataChunk.waveformData = NULL;
 
     ret = sl_read_wave_descriptor(file, wavBuf);
     if(ret != SL_SUCCESS)
@@ -380,16 +365,17 @@ SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE** wavBufPtr) {
     }
 
     bufCleanup:
-        if (wavBuf) {
-            free(wavBuf->dataChunk.waveformData);
-            wavBuf->dataChunk.waveformData = NULL;
-        }
-        free(wavBuf);
-       *wavBufPtr = NULL;
+        free(wavBuf->dataChunk.waveformData);
+        wavBuf->dataChunk.waveformData = NULL;
     fileCleanup:
         fclose(file);
     exit:
         return ret;
+}
+
+void sl_cleanup_wave_file(SL_WAV_FILE* bufPtr) {
+    free(bufPtr->dataChunk.waveformData);
+    bufPtr->dataChunk.waveformData = NULL;
 }
 
 SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
@@ -506,7 +492,6 @@ SLenum sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
     wavBuf->formatChunk.subChunk1Size = sl_buf_to_native_uint(buffer4, 4);
     if (!blocksRead || wavBuf->formatChunk.subChunk1Size == 0)
         return SL_INVALID_CHUNK_FMT_SIZE;
-
 
     //read only. audio format is verified later when parsing bits per sample
     blocksRead = fread(buffer2, 2, 1, file);
@@ -684,16 +669,6 @@ SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
     return SL_SUCCESS;
 }
 
-void sl_free_wave_file(SL_WAV_FILE** bufPtr) {
-    if (*bufPtr) {
-        SL_WAV_FILE* buf = *bufPtr;
-        free(buf->dataChunk.waveformData);
-        buf->dataChunk.waveformData = NULL;
-        free(buf);
-        *bufPtr = NULL;
-    }
-}
-
 SLenum sl_is_wave_file(SLstr path) {
     SLstr wavExtension = ".wav";
     SLstr waveExtension = ".wave";
@@ -798,16 +773,6 @@ SLdouble sl_flip_endian_double(SLdouble d) {
 #include <AL/alext.h>
 #include <AL/alut.h>
 
-/////////////////////////////////////////////////////////
-///////////////// Wrapper Definitions ///////////////////
-/////////////////////////////////////////////////////////
-#define SL_MONO 1
-#define SL_STEREO 2
-#define SL_QUAD 3
-#define SL_5_1 4
-#define SL_6_1 5
-#define SL_7_1 6
-
 ////////////////////////////////////////////////////////////////
 ///////////////// Wrapper Struct Definitions ///////////////////
 ////////////////////////////////////////////////////////////////
@@ -852,11 +817,11 @@ static SLenum sl_parse_71(SL_SOUND* sound);
 
 static void sl_stop_sound(SL_SOUND* sound);
 
-static void sl_destroy_sound(SL_SOUND** sound);
+static void sl_destroy_sound(SL_SOUND* sound);
 
-static SLenum sl_gen_sound_a(SL_SOUND** sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
+static SLenum sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
 
-static SLenum sl_gen_sound(SL_SOUND** sound, SLstr path, SLfloat gain, SLfloat pitch);
+static SLenum sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch);
 
 static SLstr* sl_get_devices(void);
 
@@ -873,15 +838,16 @@ SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
     sound->device = alcOpenDevice(device);
     sound->context = alcCreateContext(sound->device, NULL);
     alcMakeContextCurrent(sound->context);
+    // Generate a source
+    alGenSources(1, &sound->source);
 
     // Generate a buffer
     alGenBuffers(1, &sound->buffer);
 
     //Buffer stuff to data
-    alBufferData(sound->buffer, sound->format, sound->waveBuf, sound->size, sound->freq);
+    alBufferData(sound->buffer, sound->format, sound->waveBuf->dataChunk.waveformData, sound->size, sound->freq);
 
-    // Generate a source
-    alGenSources(1, &sound->source);
+
 
     // Queue the buffer for playback
     alSourceQueueBuffers(sound->source, 1, &sound->buffer);
@@ -890,7 +856,7 @@ SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
     alSourcePlay(sound->source);
 
     // Wait for playback to finish
-    alutSleep(sound->duration);
+    //TODO maybe uncomment this   alutSleep(sound->duration);
 
     //ensure it's done playing
     ALint state;
@@ -1063,7 +1029,6 @@ SLenum sl_parse_71(SL_SOUND* sound) {
 }
 
 void sl_stop_sound(SL_SOUND* sound) {
-    printf("uh oh");
     // Stop the source and delete the source and buffer
     alSourceStop(sound->source);
     alDeleteSources(1, &sound->source);
@@ -1075,59 +1040,42 @@ void sl_stop_sound(SL_SOUND* sound) {
     alcCloseDevice(sound->device);
 }
 
-void sl_destroy_sound(SL_SOUND** sound) {
-    printf("omg");
-    if(sound && *sound) {
+void sl_destroy_sound(SL_SOUND* sound) {
+    if(sound) {
         //stop sound
-        sl_stop_sound(*sound);
+        sl_stop_sound(sound);
 
         //free wav file
-        sl_free_wave_file(&((*sound)->waveBuf));
-        (*sound)->waveBuf = NULL;
-
-        //free sound
-        free(*sound);
-        *sound = NULL;
+        sl_cleanup_wave_file(sound->waveBuf);
+        sound->waveBuf = NULL;
     }
 }
 
-SLenum sl_gen_sound_a(SL_SOUND** sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
+SLenum sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
 
-    if(!sound || !waveBuf) return SL_FAIL;
-    *sound = NULL;
+    if(!waveBuf) return SL_FAIL;
 
-    *sound = (SL_SOUND *) malloc(sizeof(SL_SOUND));
+    memset(sound, 0, sizeof(SL_SOUND));
 
-    if (!*sound) return SL_FAIL;
-    (*sound)->waveBuf = waveBuf;
-    (*sound)->gain = gain;
-    (*sound)->pitch = pitch;
-    (*sound)->freq = waveBuf->formatChunk.sampleRate;
-    (*sound)->size = waveBuf->dataChunk.subChunk2Size;
-    (*sound)->duration = ((*sound)->size / (*sound)->freq) * pitch;
+    sound->waveBuf = waveBuf;
+    sound->gain = gain;
+    sound->pitch = pitch;
+    sound->freq = waveBuf->formatChunk.sampleRate;
+    sound->size = waveBuf->dataChunk.subChunk2Size;
+    sound->duration = (sound->size / sound->freq) * (float)pitch;
 
-    SLenum err = sl_parse_sound_format(*sound);
-    if(err != SL_SUCCESS) {
-        free(*sound);
-        return err;
-    }
-
-    return SL_SUCCESS;
+    return sl_parse_sound_format(sound);
 }
 
-SLenum sl_gen_sound(SL_SOUND** sound, SLstr path, SLfloat gain, SLfloat pitch) {
-    if(!sound) {
-        *sound = NULL;
-        SL_WAV_FILE *buf = NULL;
-        SLenum out = sl_read_wave_file(path, &buf);
+SLenum sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch) {
+    SL_WAV_FILE buf;
+    SLenum out = sl_read_wave_file(path, &buf);
 
-        if (out == SL_SUCCESS || buf) {
-            out = sl_gen_sound_a(&(*sound), buf, gain, pitch);
-        }
-
-        return out;
+    if (out == SL_SUCCESS) {
+        out = sl_gen_sound_a(sound, &buf, gain, pitch);
     }
-    return SL_FAIL;
+
+    return out;
 }
 
 SLstr* sl_get_devices(void) {
