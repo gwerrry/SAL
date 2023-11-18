@@ -163,28 +163,28 @@ SLenum sl_cleanup(void) {
 /////////////////////////////////////////////////////////////////////////
 
 typedef struct sl_wav_descriptor {
-    SLuchar descriptorId[4];
     SLuint chunkSize;
-    SLuchar chunkFormat[4];
     SLbool usingRIFX;
+    SLuchar descriptorId[4];
+    SLuchar chunkFormat[4];
 } SL_WAV_DESCRIPTOR;
 
 typedef struct sl_wav_fmt {
-    SLuchar fmtId[4];
     SLuint subChunk1Size;
-    SLushort audioFormat;
-    SLushort numChannels;
     SLuint sampleRate;
     SLuint byteRate;
+    SLushort audioFormat;
+    SLushort numChannels;
     SLushort blockAlign;
     SLushort bitsPerSample;
     SLushort extensionSize;
+    SLuchar fmtId[4];
 } SL_WAV_FMT;
 
 typedef struct sl_wav_data {
-    SLuchar dataId[4];
     SLuint subChunk2Size;
     SLenum pcmType;
+    SLuchar dataId[4];
     SLvoid  waveformData;
 } SL_WAV_DATA;
 
