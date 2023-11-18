@@ -10,7 +10,6 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-    //todo pad structs before release
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////// Controls if you want to use the OpenAL wrapper. Comment it out if you don't want to use it. ///////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -767,7 +766,6 @@ SLdouble sl_flip_endian_double(SLdouble d) {
 
 #ifdef SL_OPENAL_WRAPPER
 
-//todo remove if any unused
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <AL/alext.h>
@@ -779,9 +777,6 @@ SLdouble sl_flip_endian_double(SLdouble d) {
 
 typedef struct sl_sound {
     SL_WAV_FILE* waveBuf;
-    ALfloat pitch; // in % so 1.0 is 100%, 0.5 is 50% and so on.
-    ALfloat gain; // in % so 1.0 is 100%, 0.5 is 50% and so on.
-
     ALCdevice* device;
     ALCcontext* context;
     ALuint source;
@@ -790,6 +785,9 @@ typedef struct sl_sound {
     ALsizei freq;
     ALenum format;
     ALint duration;
+
+    ALfloat pitch; // in % so 1.0 is 100%, 0.5 is 50% and so on.
+    ALfloat gain; // in % so 1.0 is 100%, 0.5 is 50% and so on.
 } SL_SOUND;
 
 //////////////////////////////////////////////////////////////////
