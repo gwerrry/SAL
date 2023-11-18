@@ -167,13 +167,13 @@ SLenum sl_init(void) {
 /////////////////////////////////////////////////////////////////////////
 
 typedef struct sl_wav_descriptor {
-    SLuint chunkSize;
+    SLuint descriptorChunkSize;
     SLuchar descriptorId[4];
     SLuchar chunkFormat[4];
 } SL_WAV_DESCRIPTOR;
 
 typedef struct sl_wav_fmt {
-    SLuint subChunk1Size;
+    SLuint fmtChunkSize;
     SLuint sampleRate;
     SLuint byteRate;
     SLushort audioFormat;
@@ -185,7 +185,7 @@ typedef struct sl_wav_fmt {
 } SL_WAV_FMT;
 
 typedef struct sl_wav_data {
-    SLuint subChunk2Size;
+    SLuint dataChunkSize;
     SLenum pcmType;
     SLuchar dataId[4];
     SLvoid  waveformData;
@@ -214,7 +214,7 @@ static SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
  * @brief Frees the memory associated with the WAVE file.
  * @param buf - Buffer of WAVE file to free.
  */
-static void sl_cleanup_wave_file(SL_WAV_FILE* bufPtr);
+static void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Reads WAVE descriptor chunk. This is a helper function and should not be used except by SAL.
@@ -373,9 +373,9 @@ SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
         return ret;
 }
 
-void sl_cleanup_wave_file(SL_WAV_FILE* bufPtr) {
-    free(bufPtr->dataChunk.waveformData);
-    bufPtr->dataChunk.waveformData = NULL;
+void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf) {
+    free(wavBuf->dataChunk.waveformData);
+    wavBuf->dataChunk.waveformData = NULL;
 }
 
 SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
@@ -394,8 +394,8 @@ SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
 
     //read and validate chunk size
     blocksRead = fread(buffer4, 4, 1, file);
-    wavBuf->descriptorChunk.chunkSize = sl_buf_to_native_uint(buffer4, 4);
-    if (!blocksRead ||wavBuf->descriptorChunk.chunkSize == 0)
+    wavBuf->descriptorChunk.descriptorChunkSize = sl_buf_to_native_uint(buffer4, 4);
+    if (!blocksRead || wavBuf->descriptorChunk.descriptorChunkSize == 0)
         return SL_INVALID_CHUNK_DESCRIPTOR_SIZE;
 
     //read and validate wave format
@@ -483,8 +483,8 @@ SLenum sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
 
     //read and validate fmt chunk size
     blocksRead = fread(buffer4, 4, 1, file);
-    wavBuf->formatChunk.subChunk1Size = sl_buf_to_native_uint(buffer4, 4);
-    if (!blocksRead || wavBuf->formatChunk.subChunk1Size == 0)
+    wavBuf->formatChunk.fmtChunkSize = sl_buf_to_native_uint(buffer4, 4);
+    if (!blocksRead || wavBuf->formatChunk.fmtChunkSize == 0)
         return SL_INVALID_CHUNK_FMT_SIZE;
 
     //read only. audio format is verified later when parsing bits per sample
@@ -573,16 +573,16 @@ SLenum sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
     SLullong blocksRead;
     //read data chunk size
     blocksRead = fread(buffer4, 4, 1, file);
-    wavBuf->dataChunk.subChunk2Size = sl_buf_to_native_uint(buffer4, 4);
-    if (!blocksRead || wavBuf->dataChunk.subChunk2Size == 0)
+    wavBuf->dataChunk.dataChunkSize = sl_buf_to_native_uint(buffer4, 4);
+    if (!blocksRead || wavBuf->dataChunk.dataChunkSize == 0)
         return SL_INVALID_CHUNK_DATA_SIZE;
 
-    wavBuf->dataChunk.waveformData = malloc(wavBuf->dataChunk.subChunk2Size);
+    wavBuf->dataChunk.waveformData = malloc(wavBuf->dataChunk.dataChunkSize);
     if (!wavBuf->dataChunk.waveformData)
         return SL_FAIL;
 
     // Ensure the buffer size is even
-    blocksRead = fread(wavBuf->dataChunk.waveformData, wavBuf->dataChunk.subChunk2Size, 1, file);
+    blocksRead = fread(wavBuf->dataChunk.waveformData, wavBuf->dataChunk.dataChunkSize, 1, file);
     if (!blocksRead)
         return SL_INVALID_CHUNK_DATA_DATA;
 
@@ -596,11 +596,11 @@ SLenum sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
         case SL_SIGNED_32PCM:
         case SL_FLOAT_32PCM:
         case SL_FLOAT_64PCM:
-            if (wavBuf->dataChunk.subChunk2Size % 2 != 0)
+            if (wavBuf->dataChunk.dataChunkSize % 2 != 0)
                 return SL_INVALID_CHUNK_DATA_DATA;
             break;
         case SL_SIGNED_24PCM:
-            if (wavBuf->dataChunk.subChunk2Size % 3 != 0)
+            if (wavBuf->dataChunk.dataChunkSize % 3 != 0)
                 return SL_INVALID_CHUNK_DATA_DATA;
             break;
         default:
@@ -616,7 +616,7 @@ SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
                 break;
             case SL_SIGNED_16PCM: {
                 SLshort* data = (SLshort*) wavBuf->dataChunk.waveformData;
-                SLullong len = wavBuf->dataChunk.subChunk2Size / 2;
+                SLullong len = wavBuf->dataChunk.dataChunkSize / 2;
                 for(SLullong i = 0; i < len; ++i) {
                     data[i] = sl_flip_endian_short(data[i]);
                 }
@@ -624,7 +624,7 @@ SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
             }
             case SL_SIGNED_24PCM: {
                 SLchar* data = (SLchar*) wavBuf->dataChunk.waveformData;
-                SLullong len = wavBuf->dataChunk.subChunk2Size / 3;
+                SLullong len = wavBuf->dataChunk.dataChunkSize / 3;
                 for(SLullong i = 0; i < len; ++i) {
                     SLchar temp = data[i*3];
                     data[i*3] = data[i*3+2];
@@ -634,7 +634,7 @@ SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
             }
             case SL_SIGNED_32PCM: {
                 SLint* data = (SLint*) wavBuf->dataChunk.waveformData;
-                SLullong len = wavBuf->dataChunk.subChunk2Size / 4;
+                SLullong len = wavBuf->dataChunk.dataChunkSize / 4;
                 for(SLullong i = 0; i < len; ++i) {
                     data[i] = sl_flip_endian_int(data[i]);
                 }
@@ -642,7 +642,7 @@ SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
             }
             case SL_FLOAT_32PCM: {
                 SLfloat* data = (SLfloat*) wavBuf->dataChunk.waveformData;
-                SLullong len = wavBuf->dataChunk.subChunk2Size / 4;
+                SLullong len = wavBuf->dataChunk.dataChunkSize / 4;
                 for(SLullong i = 0; i < len; ++i) {
                     data[i] = sl_flip_endian_float(data[i]);
                 }
@@ -650,7 +650,7 @@ SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
             }
             case SL_FLOAT_64PCM: {
                 SLdouble* data = (SLdouble*) wavBuf->dataChunk.waveformData;
-                SLullong len = wavBuf->dataChunk.subChunk2Size / 8;
+                SLullong len = wavBuf->dataChunk.dataChunkSize / 8;
                 for(SLullong i = 0; i < len; ++i) {
                     data[i] = sl_flip_endian_double(data[i]);
                 }
@@ -1206,7 +1206,7 @@ SLenum sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLflo
     sound->gain    = gain;
     sound->pitch   = pitch;
     sound->freq    = waveBuf->formatChunk.sampleRate;
-    sound->size    = waveBuf->dataChunk.subChunk2Size;
+    sound->size    = waveBuf->dataChunk.dataChunkSize;
 
     SLint denom = sound->freq * waveBuf->formatChunk.numChannels * (waveBuf->formatChunk.bitsPerSample / 8);
     sound->duration = ((sound->size / denom) / pitch) + 0.5;
