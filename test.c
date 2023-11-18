@@ -24,8 +24,7 @@ int main(void) {
     } else {
         printf("Failed to parse WAVE file at \"%s\".\n", path);
     }
-    
-    sl_cleanup();
+
     return out;
 }
 
@@ -85,7 +84,6 @@ int main(void) {
     }
 
     free((void*)chosen_device);
-    sl_cleanup();
     return out;
 }
 #elif defined(SIMPLE_SOUND_TEST)
@@ -129,7 +127,6 @@ int main(void) {
     else printf("Failed to play the sound.\n");
 
     free((void*)chosen_device);
-    sl_cleanup();
     return out;
 }
 #endif

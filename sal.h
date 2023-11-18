@@ -21,10 +21,6 @@ extern "C" {
 #ifdef _WIN32
 //i know what im doing microsoft pls leave me alone
 #pragma warning(disable : 4996)
-#elif defined(__linux__)
-
-#elif defined(__APPLE__) || defined(__MACH__)
-
 #endif
 
 //////////////////////////////////////////////////////
@@ -69,12 +65,6 @@ static SLbool sysEndianness = 0;
  */
 static SLenum sl_init(void);
 
-/**
- * @brief Sound library cleanup function. You should call this when your app execution ends.
- * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
- */
-static SLenum sl_cleanup(void);
-
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////////////// Simple Audio Library Global Function Implementations ///////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -82,11 +72,6 @@ SLenum sl_init(void) {
     //quickly check the endianness of the system
     int n = 1;
     sysEndianness = *(char*)&n == 1 ? LITTLE_ENDIAN : BIG_ENDIAN;
-
-    return SL_SUCCESS;
-}
-
-SLenum sl_cleanup(void) {
 
     return SL_SUCCESS;
 }
@@ -152,10 +137,6 @@ SLenum sl_cleanup(void) {
 //////////////                                                   Little Endian Chunk Suze contains the size of the rest of the chunk.                                               //////////////
 //////////////                                                                          Little Endian Data                                                                          //////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////                                                                                 Notes                                                                                //////////////
-//////////////                                           I'm pretty sure RIFX makes it so all the little endian numbers are in big endian form.                                     //////////////
-//////////////    I might add support for more audio formats, but it shouldn't affect performance heavily, as it would just be if statements and potentially a few more parameters. //////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Struct Definitions ///////////////////
@@ -163,7 +144,6 @@ SLenum sl_cleanup(void) {
 
 typedef struct sl_wav_descriptor {
     SLuint chunkSize;
-    SLbool usingRIFX;
     SLuchar descriptorId[4];
     SLuchar chunkFormat[4];
 } SL_WAV_DESCRIPTOR;
@@ -258,8 +238,6 @@ static SLenum sl_validate_wave_data(SL_WAV_FILE* wavBuf);
  */
 static SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf);
 
-
-
 /**
  * @brief This is just for checking if the path provided ends with ".wav" or ".wave".
  * @param str - Path to check.
@@ -315,7 +293,6 @@ static SLdouble sl_flip_endian_double(SLdouble d);
 ///////////////// Wave File Parser Function Implementations ///////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-//TODO test rifx support.
 SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     SLenum ret = SL_SUCCESS;
     memset(wavBuf, 0, sizeof(SL_WAV_FILE));
@@ -379,7 +356,6 @@ void sl_cleanup_wave_file(SL_WAV_FILE* bufPtr) {
 
 SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
     const SLuchar riffID_bytes[4] = {0x52, 0x49, 0x46, 0x46};
-    const SLuchar rifxID_bytes[4] = {0x52, 0x49, 0x46, 0x58};
     const SLuchar waveID_bytes[4] = {0x57, 0x41, 0x56, 0x45};
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
     SLullong blocksRead;
@@ -389,11 +365,7 @@ SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
     if (!blocksRead)
         return SL_INVALID_CHUNK_DESCRIPTOR_ID;
 
-    if (memcmp(wavBuf->descriptorChunk.descriptorId, riffID_bytes, 4) == 0)
-        wavBuf->descriptorChunk.usingRIFX = 0;
-    else if (memcmp(wavBuf->descriptorChunk.descriptorId, rifxID_bytes, 4) == 0)
-        wavBuf->descriptorChunk.usingRIFX = 1;
-    else
+    if (memcmp(wavBuf->descriptorChunk.descriptorId, riffID_bytes, 4) != 0)
         return SL_INVALID_CHUNK_DESCRIPTOR_ID;
 
     //read and validate chunk size
@@ -401,7 +373,6 @@ SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
     wavBuf->descriptorChunk.chunkSize = sl_buf_to_native_uint(buffer4, 4);
     if (!blocksRead ||wavBuf->descriptorChunk.chunkSize == 0)
         return SL_INVALID_CHUNK_DESCRIPTOR_SIZE;
-
 
     //read and validate wave format
     blocksRead = fread(wavBuf->descriptorChunk.chunkFormat, 4, 1, file);
@@ -615,7 +586,7 @@ SLenum sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
 }
 
 SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
-    if(wavBuf->descriptorChunk.usingRIFX && sysEndianness == LITTLE_ENDIAN) {
+    if(sysEndianness != LITTLE_ENDIAN) {
         switch (wavBuf->dataChunk.pcmType) {
             case SL_UNSIGNED_8PCM:
                 break;
