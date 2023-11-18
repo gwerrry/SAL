@@ -57,7 +57,6 @@ extern "C" {
 #define SLint    int32_t
 #define SLuint   uint32_t
 #define SLenum   uint32_t
-#define SLllong  int64_t
 #define SLullong uint64_t
 #define SLfloat  float
 #define SLdouble double
@@ -874,7 +873,7 @@ static SLenum sl_parse_71(SL_SOUND* sound);
 
 /**
  * @brief Stops the sound if it is currently playing and cleans up OpenAL related things.
- * This does not free the buffers at all. It simply stops the sound and cleans up OpenAL stuff.
+ * This does not free any other sound things. It simply stops the sound and cleans up OpenAL stuff.
  * @param sound - Sound to stop.
  */
 static void sl_stop_sound(SL_SOUND* sound);
@@ -1047,6 +1046,10 @@ SLenum sl_parse_mono(SL_SOUND* sound) {
             sound->format = AL_FORMAT_MONO_FLOAT32;
             break;
         }
+        case SL_FLOAT_64PCM: {
+            sound->format = AL_FORMAT_MONO_DOUBLE_EXT;
+            break;
+        }
         default:
             return SL_FAIL;
     }
@@ -1065,6 +1068,10 @@ SLenum sl_parse_stereo(SL_SOUND* sound) {
         }
         case SL_FLOAT_32PCM: {
             sound->format = AL_FORMAT_STEREO_FLOAT32;
+            break;
+        }
+        case SL_FLOAT_64PCM: {
+            sound->format = AL_FORMAT_STEREO_DOUBLE_EXT;
             break;
         }
         default:
