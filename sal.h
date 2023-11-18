@@ -799,7 +799,9 @@ typedef struct sl_sound {
 //todo add comments
 static SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device);
 
-static SLenum sl_play_sound(SL_SOUND* sound);
+static SLenum sl_play_sound_b(SL_SOUND* sound);
+
+static SLenum sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch);
 
 static SLenum sl_parse_sound_format(SL_SOUND* sound);
 
@@ -838,8 +840,6 @@ SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
     sound->device = alcOpenDevice(device);
     sound->context = alcCreateContext(sound->device, NULL);
     alcMakeContextCurrent(sound->context);
-    // Generate a source
-    alGenSources(1, &sound->source);
 
     // Generate a buffer
     alGenBuffers(1, &sound->buffer);
@@ -847,6 +847,17 @@ SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
     //Buffer stuff to data
     alBufferData(sound->buffer, sound->format, sound->waveBuf->dataChunk.waveformData, sound->size, sound->freq);
 
+    // Generate a source
+    if (sound->source) {
+        alDeleteSources(1, &sound->source);
+    }
+    alGenSources(1, &sound->source);
+
+    // Set the pitch
+    alSourcef(sound->source, AL_PITCH, sound->pitch);
+
+    // Set the gain
+    alSourcef(sound->source, AL_GAIN, sound->gain);
 
 
     // Queue the buffer for playback
@@ -856,7 +867,7 @@ SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
     alSourcePlay(sound->source);
 
     // Wait for playback to finish
-    //TODO maybe uncomment this   alutSleep(sound->duration);
+    alutSleep(sound->duration);
 
     //ensure it's done playing
     ALint state;
@@ -870,8 +881,29 @@ SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
     return SL_SUCCESS;
 }
 
-SLenum sl_play_sound(SL_SOUND* sound) {
+SLenum sl_play_sound_b(SL_SOUND* sound) {
     return sl_play_sound_a(sound, NULL);
+}
+
+SLenum sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch) {
+    SL_SOUND sound;
+    SL_WAV_FILE buf;
+    SLenum out = sl_read_wave_file(path, &buf);
+
+    if (out != SL_SUCCESS) return out;
+
+    out = sl_gen_sound_a(&sound, &buf, gain, pitch);
+
+    if (out != SL_SUCCESS) {
+        sl_cleanup_wave_file(&buf);
+        return out;
+    }
+
+    out = sl_play_sound_a(&sound, device);
+
+    sl_destroy_sound(&sound);
+
+    return out;
 }
 
 SLenum sl_parse_sound_format(SL_SOUND* sound) {
@@ -1029,15 +1061,31 @@ SLenum sl_parse_71(SL_SOUND* sound) {
 }
 
 void sl_stop_sound(SL_SOUND* sound) {
-    // Stop the source and delete the source and buffer
-    alSourceStop(sound->source);
-    alDeleteSources(1, &sound->source);
-    alDeleteBuffers(1, &sound->buffer);
+    if (sound->source) {
+        // Stop the source and delete the source
+        alSourceStop(sound->source);
+        alDeleteSources(1, &sound->source);
+        sound->source = 0;
+    }
 
-    // Destroy the context and close the device
-    alcMakeContextCurrent(NULL);
-    alcDestroyContext(sound->context);
-    alcCloseDevice(sound->device);
+    if (sound->buffer) {
+        // Delete the buffer
+        alDeleteBuffers(1, &sound->buffer);
+        sound->buffer = 0;
+    }
+
+    if (sound->context) {
+        // Destroy the context
+        alcMakeContextCurrent(NULL);
+        alcDestroyContext(sound->context);
+        sound->context = NULL;
+    }
+
+    if (sound->device) {
+        // Close the device
+        alcCloseDevice(sound->device);
+        sound->device = NULL;
+    }
 }
 
 void sl_destroy_sound(SL_SOUND* sound) {
@@ -1062,7 +1110,9 @@ SLenum sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLflo
     sound->pitch = pitch;
     sound->freq = waveBuf->formatChunk.sampleRate;
     sound->size = waveBuf->dataChunk.subChunk2Size;
-    sound->duration = (sound->size / sound->freq) * (float)pitch;
+
+    SLfloat denom = sound->freq * waveBuf->formatChunk.numChannels * (waveBuf->formatChunk.bitsPerSample / 8);
+    sound->duration = ((sound->size / denom) / pitch) + 0.5;
 
     return sl_parse_sound_format(sound);
 }
