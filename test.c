@@ -74,7 +74,7 @@ int main(void) {
         out = sl_gen_sound_a(&sound, &buf, 1.0f, 1.0f);
         if(out == SL_SUCCESS) {
             printf("Successfully generated the sound.\n");
-            out = sl_play_sound_a(&sound, chosen_device);
+            out = sl_play_sound(&sound, chosen_device);
             printf(out == SL_SUCCESS ? "Successfully played the sound.\n" : "Failed to play the sound.\n");
         } else {
             printf("Failed to generate the sound.\n");
