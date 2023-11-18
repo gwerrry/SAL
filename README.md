@@ -117,7 +117,7 @@ static SLenum sl_is_wave_file(SLstr path);
 
 // Plays the specified sound at the specified device. Use NULL for default device.
 // Returns SL_SUCCESS if everything went right. Anything else means something happened.
-static SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device);
+static SLenum sl_play_sound(SL_SOUND* sound, SLstr device);
 
 // Does the same thing as the above function except it chooses the default device.
 // Returns SL_SUCCESS if everything went right. Anything else means something happened.
