@@ -794,7 +794,7 @@ typedef struct sl_sound {
  * @param device - Device to play sound to.
  * @return SL_SUCCESS if succeeded. SL_FAIL otherwise.
  */
-static SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device);
+static SLenum sl_play_sound(SL_SOUND* sound, SLstr device);
 
 /**
  * @brief Lower level way of playing a sound.
@@ -922,7 +922,7 @@ static void sl_destroy_device_list(SLstr** devices);
 ///////////////// Wrapper Function Implementations ///////////////////
 //////////////////////////////////////////////////////////////////////
 
-SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
+SLenum sl_play_sound(SL_SOUND* sound, SLstr device) {
 
     if(!sound) return SL_FAIL;
     // Initialize OpenAL
@@ -971,7 +971,7 @@ SLenum sl_play_sound_a(SL_SOUND* sound, SLstr device) {
 }
 
 SLenum sl_play_sound_b(SL_SOUND* sound) {
-    return sl_play_sound_a(sound, NULL);
+    return sl_play_sound(sound, NULL);
 }
 
 SLenum sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch) {
@@ -988,7 +988,7 @@ SLenum sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch) {
         return out;
     }
 
-    out = sl_play_sound_a(&sound, device);
+    out = sl_play_sound(&sound, device);
 
     sl_cleanup_sound(&sound);
 
