@@ -20,7 +20,7 @@ jobs:
       run: |
           sudo apt-get update
           sudo apt-get install -y cmake libopenal1 libopenal-dev libalut-dev
-          export CMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/cmake:$CMAKE_PREFIX_PATH
+          export OpenAL_DIR=/usr/lib/x86_64-linux-gnu/cmake/OpenAL
       shell: bash
 
     - name: Configure and build
