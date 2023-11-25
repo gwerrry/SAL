@@ -12,6 +12,9 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
 
+    env:
+      OpenAL_DIR: /usr/lib/x86_64-linux-gnu/cmake/OpenAL
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -20,8 +23,7 @@ jobs:
       run: |
           sudo apt-get update
           sudo apt-get install -y cmake libopenal1 libopenal-dev libalut-dev
-          OPENAL_CONFIG=$(sudo find / -name openal-config.cmake 2>/dev/null | head -n 1)
-          export OpenAL_DIR=$(dirname $OPENAL_CONFIG)
+          ls $OpenAL_DIR
       shell: bash
 
     - name: Configure and build
