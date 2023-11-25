@@ -23,7 +23,7 @@ jobs:
       run: |
           sudo apt-get update
           sudo apt-get install -y cmake libopenal1 libopenal-dev libalut-dev
-          ls $OpenAL_DIR
+          dpkg -L libopenal-dev
       shell: bash
 
     - name: Configure and build
