@@ -62,9 +62,11 @@ extern "C" {
 #define SLdouble double
 #define SLstr    const char*
 #define SLvoid   void*
+
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////// Tells the native endian-ness of the system ///////////////////
 ////////////////////////////////////////////////////////////////////////////////
+
 static SLbool sysEndianness = 0;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -373,8 +375,10 @@ SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
 }
 
 void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf) {
-    free(wavBuf->dataChunk.waveformData);
-    wavBuf->dataChunk.waveformData = NULL;
+    if(wavBuf) {
+        free(wavBuf->dataChunk.waveformData);
+        wavBuf->dataChunk.waveformData = NULL;
+    }
 }
 
 SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
