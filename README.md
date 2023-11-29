@@ -3,6 +3,7 @@ This library is designed to be a simple way to parse and play WAVE files in C. I
 
 [![windows](https://github.com/gwerrry/SAL/actions/workflows/windows.yml/badge.svg)](https://github.com/gwerrry/SAL/actions/workflows/windows.yml)
 [![linux](https://github.com/gwerrry/SAL/actions/workflows/linux.yml/badge.svg)](https://github.com/gwerrry/SAL/actions/workflows/linux.yml)
+
 ## Including
 SAL is a single include header. 
 Simply copy ```sal.h``` in your project and you are good to go.   
