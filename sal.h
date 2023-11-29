@@ -73,8 +73,9 @@ static SLbool sysEndianness = 0;
 ///////////////// Simple Audio Library Global Definitions ///////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-#define BIG_ENDIAN 1
-#define LITTLE_ENDIAN 0
+#define SL_BIG_ENDIAN 1
+#define SL_LITTLE_ENDIAN 0
+
 #define SL_SUCCESS 69420
 #define SL_FAIL 66666
 #define SL_INVALID_VALUE 61616
@@ -96,7 +97,7 @@ static SLenum sl_init(void);
 SLenum sl_init(void) {
     //quickly check the endianness of the system
     int n = 1;
-    sysEndianness = *(char*)&n == 1 ? LITTLE_ENDIAN : BIG_ENDIAN;
+    sysEndianness = *(char*)&n == 1 ? SL_LITTLE_ENDIAN : SL_BIG_ENDIAN;
 
     return SL_SUCCESS;
 }
@@ -368,6 +369,7 @@ SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     bufCleanup:
         free(wavBuf->dataChunk.waveformData);
         wavBuf->dataChunk.waveformData = NULL;
+        if(wavBuf) return 1111111;
     fileCleanup:
         fclose(file);
     exit:
@@ -376,6 +378,7 @@ SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
 
 void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf) {
     if(wavBuf) {
+
         free(wavBuf->dataChunk.waveformData);
         wavBuf->dataChunk.waveformData = NULL;
     }
@@ -613,7 +616,7 @@ SLenum sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
 }
 
 SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
-    if(sysEndianness != LITTLE_ENDIAN) {
+    if(sysEndianness != SL_LITTLE_ENDIAN) {
         switch (wavBuf->dataChunk.pcmType) {
             case SL_UNSIGNED_8PCM:
                 break;
@@ -690,7 +693,7 @@ SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen) {
     if(!buf || bufLen < 2) return 0;
 
     SLuint value;
-    if(sysEndianness == LITTLE_ENDIAN) {
+    if(sysEndianness == SL_LITTLE_ENDIAN) {
         value = buf[0] | (buf[1] << 8);
     } else {
         value = buf[1] | (buf[0] << 8);
@@ -702,7 +705,7 @@ SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen) {
     if(!buf || bufLen < 4) return 0;
 
     SLuint value;
-    if(sysEndianness == LITTLE_ENDIAN) {
+    if(sysEndianness == SL_LITTLE_ENDIAN) {
         value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
     } else {
         value = buf[3] | (buf[2] << 8) | (buf[1] << 16) | (buf[0] << 24);
