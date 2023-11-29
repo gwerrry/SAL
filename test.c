@@ -56,7 +56,7 @@ int main(void) {
     // Print the list of devices
     printf("List of sound devices: \n");
     for (SLullong i = 0; devices[i] != NULL; i++)
-        printf("Device %llu: %s\n", i, devices[i]);
+        printf("Device %lu: %s\n", i, devices[i]);
 
     // Ask the user to choose a device
     printf("\nWhat device would you like to play? (-1 for default): ");
@@ -120,7 +120,7 @@ int main(void) {
     // Print the list of devices
     printf("List of sound devices: \n");
     for (SLullong i = 0; devices[i] != NULL; i++)
-        printf("Device %llu: %s\n", i, devices[i]);
+        printf("Device %lu: %s\n", i, devices[i]);
 
     // Ask the user to choose a device
     printf("\nWhat device would you like to play? (-1 for default): ");
