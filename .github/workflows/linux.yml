@@ -1,0 +1,72 @@
+name: linux
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci_test_gcc:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Install CMake and extra libs
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake autoconf libtool
+      shell: bash
+    
+    - name: Install vcpkg and vcpkg dependencies
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        sudo ./bootstrap-vcpkg.sh -disableMetrics
+        sudo ./vcpkg integrate install
+        sudo ./vcpkg install openal-soft:x64-linux
+        sudo ./vcpkg install freealut:x64-linux
+        
+    - name: Configure and build with GCC
+      run: |
+        export VCPKG_ROOT=$(pwd)/vcpkg/scripts/buildsystems/vcpkg.cmake
+        mkdir build
+        cd build
+        cmake -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT" ..
+        cmake --build .
+      working-directory: ${{ github.workspace }}
+      
+  ci_test_clang:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Install CMake and extra libs
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake autoconf libtool clang
+      shell: bash
+    
+    - name: Install vcpkg and vcpkg dependencies
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        sudo ./bootstrap-vcpkg.sh -disableMetrics
+        sudo ./vcpkg integrate install
+        sudo ./vcpkg install openal-soft:x64-linux
+        sudo ./vcpkg install freealut:x64-linux
+      
+    - name: Configure and build with Clang
+      run: |
+        export VCPKG_ROOT=$(pwd)/vcpkg/scripts/buildsystems/vcpkg.cmake
+        mkdir build
+        cd build
+        cmake -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
+        cmake --build .
+      working-directory: ${{ github.workspace }}

@@ -1,0 +1,40 @@
+name: windows
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci_test_msvc:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Install CMake and extra libs
+      run: |
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+      shell: powershell
+
+    - name: Install vcpkg and vcpkg dependencies
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        .\bootstrap-vcpkg.bat -disableMetrics
+        .\vcpkg integrate install
+        .\vcpkg install openal-soft:x64-windows
+        .\vcpkg install freealut:x64-windows
+        
+    - name: Configure and build with MSVC
+      run: |
+        $env:VCPKG_ROOT="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        mkdir build
+        cd build
+        cmake -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT" -G "Visual Studio 17 2022" ..
+        cmake --build . --config Release
+      working-directory: ${{ github.workspace }}
