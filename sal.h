@@ -372,9 +372,8 @@ SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     }
 
     bufCleanup:
-        free(wavBuf->dataChunk.waveformData); // the fuck is this? potential undefined behavior? ew.
+    if(wavBuf->dataChunk.waveformData != NULL) free(wavBuf->dataChunk.waveformData);
         wavBuf->dataChunk.waveformData = NULL;
-        if(wavBuf) return 1111111; // todo why the fuck is this here?
     fileCleanup:
         fclose(file);
     exit:
@@ -384,7 +383,7 @@ SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
 void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf) {
     if(wavBuf) {
         //todo more potential undefined behavior.
-        free(wavBuf->dataChunk.waveformData);
+        if(wavBuf->dataChunk.waveformData != NULL) free(wavBuf->dataChunk.waveformData);
         wavBuf->dataChunk.waveformData = NULL;
     }
 }
