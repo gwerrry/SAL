@@ -335,7 +335,7 @@ SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     FILE* file;
 
     //ensure pointers are good were just going to assume the user allocated stuff right
-    if (!path) {
+    if (path != NULL) {
         ret = SL_INVALID_VALUE;
         goto exit;
     }
@@ -365,15 +365,15 @@ SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     ret = sl_ensure_wave_endianness(wavBuf);
     if(ret != SL_SUCCESS) goto bufCleanup;
 
-    if (wavBuf->dataChunk.waveformData) goto fileCleanup;
+    if (wavBuf->dataChunk.waveformData != NULL) goto fileCleanup;
     else {
         ret = SL_FAIL;
         goto bufCleanup;
     }
 
     bufCleanup:
-    if(wavBuf->dataChunk.waveformData != NULL) free(wavBuf->dataChunk.waveformData);
-        wavBuf->dataChunk.waveformData = NULL;
+        if(wavBuf->dataChunk.waveformData != NULL) free(wavBuf->dataChunk.waveformData);
+            wavBuf->dataChunk.waveformData = NULL;
     fileCleanup:
         fclose(file);
     exit:
@@ -381,8 +381,7 @@ SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
 }
 
 void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf) {
-    if(wavBuf) {
-        //todo more potential undefined behavior.
+    if(wavBuf != NULL) {
         if(wavBuf->dataChunk.waveformData != NULL) free(wavBuf->dataChunk.waveformData);
         wavBuf->dataChunk.waveformData = NULL;
     }
@@ -454,8 +453,7 @@ SL_RETURN_CODE sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf) {
             //store data id
             memcpy(wavBuf->dataChunk.dataId, buffer4, 4);
             SLuint ret = sl_read_wave_data_chunk(file, wavBuf);
-            if(ret != SL_SUCCESS)
-                return ret;
+            if(ret != SL_SUCCESS) return ret;
         }
 
         if(foundFmt && foundData) break;
@@ -588,7 +586,7 @@ SL_RETURN_CODE sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
         return SL_INVALID_CHUNK_DATA_SIZE;
 
     wavBuf->dataChunk.waveformData = malloc(wavBuf->dataChunk.dataChunkSize);
-    if (!wavBuf->dataChunk.waveformData)
+    if (wavBuf->dataChunk.waveformData == NULL)
         return SL_FAIL;
 
     // Ensure the buffer size is even
@@ -686,7 +684,7 @@ SL_RETURN_CODE sl_is_wave_file(SLstr path) {
 
 SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen) {
     //who needs comments, am i right?
-    if(!buf || bufLen < 2) return 0;
+    if(buf == NULL || bufLen < 2) return 0;
 
     SLuint value;
     if(sysEndianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8);
@@ -696,7 +694,7 @@ SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen) {
 }
 
 SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen) {
-    if(!buf || bufLen < 4) return 0;
+    if(buf == NULL || bufLen < 4) return 0;
 
     SLuint value;
     if(sysEndianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
@@ -919,7 +917,7 @@ static void sl_destroy_device_list(SLstr** devices);
 
 SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device) {
 
-    if(!sound) return SL_FAIL;
+    if(sound == NULL) return SL_FAIL;
     // Initialize OpenAL
     sound->device = alcOpenDevice(device);
     sound->context = alcCreateContext(sound->device, NULL);
@@ -932,9 +930,7 @@ SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device) {
     alBufferData(sound->buffer, sound->format, sound->waveBuf->dataChunk.waveformData, sound->size, sound->freq);
 
     // Generate a source
-    if (sound->source) {
-        alDeleteSources(1, &sound->source);
-    }
+    if (sound->source) alDeleteSources(1, &sound->source);
     alGenSources(1, &sound->source);
 
     // Set the pitch
@@ -1188,7 +1184,7 @@ void sl_stop_sound(SL_SOUND* sound) {
 }
 
 void sl_cleanup_sound(SL_SOUND* sound) {
-    if(sound) {
+    if(sound != NULL) {
         //stop sound
         sl_stop_sound(sound);
 
@@ -1200,7 +1196,7 @@ void sl_cleanup_sound(SL_SOUND* sound) {
 
 SL_RETURN_CODE sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
 
-    if(!waveBuf) return SL_FAIL;
+    if(waveBuf == NULL) return SL_FAIL;
 
     memset(sound, 0, sizeof(SL_SOUND));
 
@@ -1229,7 +1225,7 @@ SLstr* sl_get_devices(void) {
     if (alcIsExtensionPresent(NULL, "ALC_ENUMERATE_ALL_EXT") != AL_TRUE) return NULL;
 
     SLstr devices = alcGetString(NULL, ALC_ALL_DEVICES_SPECIFIER);
-    if (!devices) return NULL;
+    if (devices == NULL) return NULL;
 
     SLstr device = devices;
 
@@ -1241,14 +1237,14 @@ SLstr* sl_get_devices(void) {
 
     // Allocate memory for the array of device names
     SLstr* arr = (SLstr*)malloc((numDevices + 1) * sizeof(SLstr));
-    if (!arr) return NULL;
+    if (arr == NULL) return NULL;
 
     // Copy the device names into the array
     device = devices;
     for (SLullong i = 0; i < numDevices; i++) {
         SLullong len = strlen(device);
         arr[i] = strdup(device);
-        if (!arr[i]) {
+        if (arr[i] == NULL) {
             // clean up and return NULL
             for (SLullong j = 0; j < i; j++) {
                 free((void*)arr[j]);
@@ -1266,7 +1262,7 @@ SLstr* sl_get_devices(void) {
 }
 
 void sl_destroy_device_list(SLstr** devices) {
-    if (devices && *devices) {
+    if (devices != NULL && *devices != NULL) {
         // free device names
         for (SLullong i = 0; (*devices)[i] != NULL; i++) free((void*)((*devices)[i]));
 
