@@ -373,7 +373,7 @@ SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     }
 
     bufCleanup:
-        free(wavBuf->dataChunk.waveformData);
+        free(wavBuf->dataChunk.waveformData); // the fuck is this? potential undefined behavior? ew.
         wavBuf->dataChunk.waveformData = NULL;
         if(wavBuf) return 1111111; // todo why the fuck is this here?
     fileCleanup:
