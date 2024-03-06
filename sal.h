@@ -112,36 +112,40 @@ SLenum sl_init(void) {
 ///////////////// Wave File Parser Return Code Definitions ///////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-#define SL_FILE_ERROR 62636
-#define SL_INVALID_WAVE_FORMAT 63293
+typedef enum {
+    SL_FILE_ERROR = 62636,
+    SL_INVALID_WAVE_FORMAT = 63293,
 
-#define SL_INVALID_CHUNK_DESCRIPTOR_ID 10000
-#define SL_INVALID_CHUNK_DESCRIPTOR_SIZE 11111
-#define SL_INVALID_CHUNK_DESCRIPTOR_FORMAT 12222
+    SL_INVALID_CHUNK_DESCRIPTOR_ID = 10000,
+    SL_INVALID_CHUNK_DESCRIPTOR_SIZE = 11111,
+    SL_INVALID_CHUNK_DESCRIPTOR_FORMAT = 12222,
 
-#define SL_CHUNK_FORMAT_NOT_FOUND 20000
-#define SL_INVALID_CHUNK_FMT_SIZE 23010
-#define SL_INVALID_CHUNK_FMT_AUDIO_FORMAT 20190
-#define SL_INVALID_CHUNK_FMT_CHANNELS 21600
-#define SL_INVALID_CHUNK_FMT_SAMPLE_RATE 25021
-#define SL_INVALID_CHUNK_FMT_BYTE_RATE 20205
-#define SL_INVALID_CHUNK_FMT_BLOCK_ALIGN 22008
-#define SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE 20321
+    SL_CHUNK_FORMAT_NOT_FOUND = 20000,
+    SL_INVALID_CHUNK_FMT_SIZE = 23010,
+    SL_INVALID_CHUNK_FMT_AUDIO_FORMAT = 20190,
+    SL_INVALID_CHUNK_FMT_CHANNELS = 21600,
+    SL_INVALID_CHUNK_FMT_SAMPLE_RATE = 25021,
+    SL_INVALID_CHUNK_FMT_BYTE_RATE = 20205,
+    SL_INVALID_CHUNK_FMT_BLOCK_ALIGN = 22008,
+    SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE = 20321,
 
-#define SL_CHUNK_DATA_NOT_FOUND 30000
-#define SL_INVALID_CHUNK_DATA_SIZE 30777
-#define SL_INVALID_CHUNK_DATA_DATA 30666
+    SL_CHUNK_DATA_NOT_FOUND = 30000,
+    SL_INVALID_CHUNK_DATA_SIZE = 30777,
+    SL_INVALID_CHUNK_DATA_DATA = 30666
+} SL_RETURN_CODE;
 
-///////////////////////////////////////////////////////////////////
-///////////////// Wave File Parser Useful types ///////////////////
-///////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+///////////////// Wave File Parser Pcm types ///////////////////
+////////////////////////////////////////////////////////////////
 
-#define SL_UNSIGNED_8PCM 1
-#define SL_SIGNED_16PCM 2
-#define SL_SIGNED_24PCM 3
-#define SL_SIGNED_32PCM 4
-#define SL_FLOAT_32PCM 5
-#define SL_FLOAT_64PCM 6
+typedef enum {
+    SL_UNSIGNED_8PCM = 1,
+    SL_SIGNED_16PCM = 2,
+    SL_SIGNED_24PCM = 3,
+    SL_SIGNED_32PCM = 4,
+    SL_FLOAT_32PCM = 5,
+    SL_FLOAT_64PCM = 6
+} SL_WAVE_PCM_TYPE;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////                                                                          The Wave file format                                                                        //////////////
@@ -325,8 +329,8 @@ static SLdouble sl_flip_endian_double(SLdouble d);
 ///////////////// Wave File Parser Function Implementations ///////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
-    SLenum ret = SL_SUCCESS;
+SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
+    SL_RETURN_CODE ret = SL_SUCCESS;
     memset(wavBuf, 0, sizeof(SL_WAV_FILE));
 
     FILE* file;
@@ -351,20 +355,16 @@ SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     }
 
     ret = sl_read_wave_descriptor(file, wavBuf);
-    if(ret != SL_SUCCESS)
-        goto bufCleanup;
+    if(ret != SL_SUCCESS) goto bufCleanup;
 
     ret = sl_parse_wave_chunks(file, wavBuf);
-    if(ret != SL_SUCCESS)
-        goto bufCleanup;
+    if(ret != SL_SUCCESS) goto bufCleanup;
 
     ret = sl_validate_wave_data(wavBuf);
-    if(ret != SL_SUCCESS)
-        goto bufCleanup;
+    if(ret != SL_SUCCESS) goto bufCleanup;
 
     ret = sl_ensure_wave_endianness(wavBuf);
-    if(ret != SL_SUCCESS)
-        goto bufCleanup;
+    if(ret != SL_SUCCESS) goto bufCleanup;
 
     if (wavBuf->dataChunk.waveformData) goto fileCleanup;
     else {
@@ -375,7 +375,7 @@ SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     bufCleanup:
         free(wavBuf->dataChunk.waveformData);
         wavBuf->dataChunk.waveformData = NULL;
-        if(wavBuf) return 1111111;
+        if(wavBuf) return 1111111; // todo why the fuck is this here?
     fileCleanup:
         fclose(file);
     exit:
@@ -390,7 +390,7 @@ void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf) {
     }
 }
 
-SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
+SL_RETURN_CODE sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
     const SLuchar riffID_bytes[4] = {0x52, 0x49, 0x46, 0x46};
     const SLuchar waveID_bytes[4] = {0x57, 0x41, 0x56, 0x45};
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
@@ -418,7 +418,7 @@ SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
     return SL_SUCCESS;
 }
 
-SLenum sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf) {
+SL_RETURN_CODE sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf) {
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
     const SLuchar fmtID_bytes [4] = {0x66, 0x6d, 0x74, 0x20};
     const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
@@ -488,7 +488,7 @@ SLenum sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf) {
     return SL_SUCCESS;
 }
 
-SLenum sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
+SL_RETURN_CODE sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
     SLuchar buffer2[2] = {0x00, 0x00};
     SLullong blocksRead;
@@ -580,7 +580,7 @@ SLenum sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
     return SL_SUCCESS;
 }
 
-SLenum sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
+SL_RETURN_CODE sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
     SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
     SLullong blocksRead;
     //read data chunk size
@@ -601,7 +601,7 @@ SLenum sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
     return SL_SUCCESS;
 }
 
-SLenum sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
+SL_RETURN_CODE sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
     switch (wavBuf->dataChunk.pcmType) {
         case SL_UNSIGNED_8PCM:
         case SL_SIGNED_16PCM:
@@ -621,7 +621,7 @@ SLenum sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
     return SL_SUCCESS;
 }
 
-SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
+SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
     if(sysEndianness != SL_LITTLE_ENDIAN) {
         switch (wavBuf->dataChunk.pcmType) {
             case SL_UNSIGNED_8PCM:
@@ -675,7 +675,7 @@ SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
     return SL_SUCCESS;
 }
 
-SLenum sl_is_wave_file(SLstr path) {
+SL_RETURN_CODE sl_is_wave_file(SLstr path) {
     SLstr wavExtension = ".wav";
     SLstr waveExtension = ".wave";
     SLullong path_len = strlen(path);
