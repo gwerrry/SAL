@@ -718,15 +718,11 @@ SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen) {
     return value;
 }
 
-// todo this can literally be a macro
 SLshort sl_flip_endian_short(SLshort s) {
-    // simple bitwise stuff to flip the endianness
     return (s >> 8) | (s << 8);
 }
 
-// todo this can literally be a macro
 SLint sl_flip_endian_int(SLint i) {
-    // simple bitwise stuff to flip the endianness
     return ((i >> 24) & 0xff) |
            ((i << 8) & 0xff0000) |
            ((i >> 8) & 0xff00) |
@@ -738,7 +734,6 @@ SLfloat sl_flip_endian_float(SLfloat f) {
     unsigned long num_int;
     memcpy(&num_int, &f, sizeof(float));
 
-    // simple bitwise stuff to flip the endianness
     unsigned long swapped_int = ((num_int >> 24) & 0xff) |
                                 ((num_int << 8) & 0xff0000) |
                                 ((num_int >> 8) & 0xff00) |
@@ -753,7 +748,6 @@ SLdouble sl_flip_endian_double(SLdouble d) {
     uint64_t num_int;
     memcpy(&num_int, &d, sizeof(double));
 
-    // simple bitwise stuff to flip the endianness
     uint64_t swapped_int = ((num_int >> 56) & 0x00000000000000ff) |
                            ((num_int >> 40) & 0x000000000000ff00) |
                            ((num_int >> 24) & 0x0000000000ff0000) |
