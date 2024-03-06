@@ -607,12 +607,10 @@ SL_RETURN_CODE sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
         case SL_SIGNED_32PCM:
         case SL_FLOAT_32PCM:
         case SL_FLOAT_64PCM:
-            if (wavBuf->dataChunk.dataChunkSize % 2 != 0)
-                return SL_INVALID_CHUNK_DATA_DATA;
+            if (wavBuf->dataChunk.dataChunkSize % 2 != 0) return SL_INVALID_CHUNK_DATA_DATA;
             break;
         case SL_SIGNED_24PCM:
-            if (wavBuf->dataChunk.dataChunkSize % 3 != 0)
-                return SL_INVALID_CHUNK_DATA_DATA;
+            if (wavBuf->dataChunk.dataChunkSize % 3 != 0) return SL_INVALID_CHUNK_DATA_DATA;
             break;
         default:
             return SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
@@ -628,9 +626,8 @@ SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
             case SL_SIGNED_16PCM: {
                 SLshort* data = (SLshort*) wavBuf->dataChunk.waveformData;
                 SLullong len = wavBuf->dataChunk.dataChunkSize / 2;
-                for(SLullong i = 0; i < len; ++i) {
-                    data[i] = sl_flip_endian_short(data[i]);
-                }
+                for(SLullong i = 0; i < len; ++i) data[i] = sl_flip_endian_short(data[i]);
+
                 break;
             }
             case SL_SIGNED_24PCM: {
@@ -646,25 +643,22 @@ SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
             case SL_SIGNED_32PCM: {
                 SLint* data = (SLint*) wavBuf->dataChunk.waveformData;
                 SLullong len = wavBuf->dataChunk.dataChunkSize / 4;
-                for(SLullong i = 0; i < len; ++i) {
-                    data[i] = sl_flip_endian_int(data[i]);
-                }
+                for(SLullong i = 0; i < len; ++i) data[i] = sl_flip_endian_int(data[i]);
+
                 break;
             }
             case SL_FLOAT_32PCM: {
                 SLfloat* data = (SLfloat*) wavBuf->dataChunk.waveformData;
                 SLullong len = wavBuf->dataChunk.dataChunkSize / 4;
-                for(SLullong i = 0; i < len; ++i) {
-                    data[i] = sl_flip_endian_float(data[i]);
-                }
+                for(SLullong i = 0; i < len; ++i) data[i] = sl_flip_endian_float(data[i]);
+
                 break;
             }
             case SL_FLOAT_64PCM: {
                 SLdouble* data = (SLdouble*) wavBuf->dataChunk.waveformData;
                 SLullong len = wavBuf->dataChunk.dataChunkSize / 8;
-                for(SLullong i = 0; i < len; ++i) {
-                    data[i] = sl_flip_endian_double(data[i]);
-                }
+                for(SLullong i = 0; i < len; ++i)     data[i] = sl_flip_endian_double(data[i]);
+
                 break;
             }
             default:
@@ -681,9 +675,7 @@ SL_RETURN_CODE sl_is_wave_file(SLstr path) {
     SLullong wavExtensionLen = strlen(wavExtension);
     SLullong waveExtensionLen = strlen(waveExtension);
 
-    if (wavExtensionLen > path_len && waveExtensionLen > path_len) {
-        return SL_FAIL;
-    }
+    if (wavExtensionLen > path_len && waveExtensionLen > path_len) return SL_FAIL;
 
     SL_RETURN_CODE res = (strcmp(wavExtension, path + path_len - wavExtensionLen) == 0 ||
                   strcmp(waveExtension, path + path_len - waveExtensionLen) == 0)
@@ -698,11 +690,9 @@ SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen) {
     if(!buf || bufLen < 2) return 0;
 
     SLuint value;
-    if(sysEndianness == SL_LITTLE_ENDIAN) {
-        value = buf[0] | (buf[1] << 8);
-    } else {
-        value = buf[1] | (buf[0] << 8);
-    }
+    if(sysEndianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8);
+    else value = buf[1] | (buf[0] << 8);
+
     return value;
 }
 
@@ -710,11 +700,9 @@ SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen) {
     if(!buf || bufLen < 4) return 0;
 
     SLuint value;
-    if(sysEndianness == SL_LITTLE_ENDIAN) {
-        value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
-    } else {
-        value = buf[3] | (buf[2] << 8) | (buf[1] << 16) | (buf[0] << 24);
-    }
+    if(sysEndianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
+    else value = buf[3] | (buf[2] << 8) | (buf[1] << 16) | (buf[0] << 24);
+
     return value;
 }
 
@@ -1233,9 +1221,7 @@ SL_RETURN_CODE sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat p
     SL_WAV_FILE buf;
     SL_RETURN_CODE out = sl_read_wave_file(path, &buf);
 
-    if (out == SL_SUCCESS) {
-        out = sl_gen_sound_a(sound, &buf, gain, pitch);
-    }
+    if (out == SL_SUCCESS) out = sl_gen_sound_a(sound, &buf, gain, pitch);
 
     return out;
 }
@@ -1283,9 +1269,7 @@ SLstr* sl_get_devices(void) {
 void sl_destroy_device_list(SLstr** devices) {
     if (devices && *devices) {
         // free device names
-        for (SLullong i = 0; (*devices)[i] != NULL; i++) {
-            free((void*)((*devices)[i]));  // Cast to void* cause const
-        }
+        for (SLullong i = 0; (*devices)[i] != NULL; i++) free((void*)((*devices)[i]));
 
         free(*devices);
         *devices = NULL;
