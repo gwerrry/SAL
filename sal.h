@@ -62,57 +62,21 @@ extern "C" {
 #define SLushort uint16_t
 #define SLint    int32_t
 #define SLuint   uint32_t
-#define SLenum   uint32_t
 #define SLullong uint64_t
 #define SLfloat  float
 #define SLdouble double
 #define SLstr    const char*
 #define SLvoid   void*
 
-////////////////////////////////////////////////////////////////////////////////
-///////////////// Tells the native endian-ness of the system ///////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-static SLbool sysEndianness = 0;
-
-/////////////////////////////////////////////////////////////////////////////
-///////////////// Simple Audio Library Global Definitions ///////////////////
-/////////////////////////////////////////////////////////////////////////////
-
-#define SL_BIG_ENDIAN 1
-#define SL_LITTLE_ENDIAN 0
-
-#define SL_SUCCESS 69420
-#define SL_FAIL 66666
-#define SL_INVALID_VALUE 61616
-
-/////////////////////////////////////////////////////////////////////////////////////
-///////////////// Simple Audio Library Global Function Defintions ///////////////////
-/////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief Sound library init function. You MUST call this even when using the wave file parser.
- * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
- */
-static SLenum sl_init(void);
-
-//////////////////////////////////////////////////////////////////////////////////////////
-///////////////// Simple Audio Library Global Function Implementations ///////////////////
-//////////////////////////////////////////////////////////////////////////////////////////
-
-SLenum sl_init(void) {
-    //quickly check the endianness of the system
-    int n = 1;
-    sysEndianness = *(char*)&n == 1 ? SL_LITTLE_ENDIAN : SL_BIG_ENDIAN;
-
-    return SL_SUCCESS;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-///////////////// Wave File Parser Return Code Definitions ///////////////////
-//////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////
+/////////////////  Return Codes ///////////////////
+///////////////////////////////////////////////////
 
 typedef enum {
+    SL_SUCCESS = 69420,
+    SL_FAIL = 66666,
+    SL_INVALID_VALUE = 61616,
+
     SL_FILE_ERROR = 62636,
     SL_INVALID_WAVE_FORMAT = 63293,
 
@@ -133,6 +97,41 @@ typedef enum {
     SL_INVALID_CHUNK_DATA_SIZE = 30777,
     SL_INVALID_CHUNK_DATA_DATA = 30666
 } SL_RETURN_CODE;
+
+////////////////////////////////////////////////////////////////////////////////
+///////////////// Tells the native endian-ness of the system ///////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+static SLbool sysEndianness = 0;
+
+/////////////////////////////////////////////////////////////////////////////
+///////////////// Simple Audio Library Global Definitions ///////////////////
+/////////////////////////////////////////////////////////////////////////////
+
+#define SL_BIG_ENDIAN 1
+#define SL_LITTLE_ENDIAN 0
+
+/////////////////////////////////////////////////////////////////////////////////////
+///////////////// Simple Audio Library Global Function Defintions ///////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief Sound library init function. You MUST call this even when using the wave file parser.
+ * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
+ */
+static SL_RETURN_CODE sl_init(void);
+
+//////////////////////////////////////////////////////////////////////////////////////////
+///////////////// Simple Audio Library Global Function Implementations ///////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+
+SL_RETURN_CODE sl_init(void) {
+    //quickly check the endianness of the system
+    int n = 1;
+    sysEndianness = *(char*)&n == 1 ? SL_LITTLE_ENDIAN : SL_BIG_ENDIAN;
+
+    return SL_SUCCESS;
+}
 
 ////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Pcm types ///////////////////
@@ -198,7 +197,7 @@ typedef struct sl_wav_fmt {
 
 typedef struct sl_wav_data {
     SLuint dataChunkSize;
-    SLenum pcmType;
+    SLuint pcmType;
     SLuchar dataId[4];
     SLvoid  waveformData;
 } SL_WAV_DATA;
@@ -220,7 +219,7 @@ typedef struct sl_wav_file {
  * @param wavBufPtr - Buffer for the WAVE file.
  * @return SL_SUCCESS if succeeded. There are many useful return codes documented on the Github so you can debug anything else that happens.
  */
-static SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
+static SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Frees the memory associated with the WAVE file.
@@ -234,7 +233,7 @@ static void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf);
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-static SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf);
+static SL_RETURN_CODE sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Parses WAVE chunks. This is a helper function and should not be used except by SAL.
@@ -242,7 +241,7 @@ static SLenum sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf);
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-static SLenum sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf);
+static SL_RETURN_CODE sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Reads WAVE format chunk. This is a helper function and should not be used except by SAL.
@@ -250,7 +249,7 @@ static SLenum sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf);
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-static SLenum sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf);
+static SL_RETURN_CODE sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Reads WAVE data chunk. This is a helper function and should not be used except by SAL.
@@ -258,28 +257,28 @@ static SLenum sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf);
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-static SLenum sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf);
+static SL_RETURN_CODE sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Ensures WAVE data ends on a proper byte boundary. This is a helper function and should not be used except by SAL.
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-static SLenum sl_validate_wave_data(SL_WAV_FILE* wavBuf);
+static SL_RETURN_CODE sl_validate_wave_data(SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Ensures WAVE data endian-ness is correct. This is a helper function and should not be used except by SAL.
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-static SLenum sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf);
+static SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf);
 
 /**
  * @brief This is just for checking if the path provided ends with ".wav" or ".wave".
  * @param str - Path to check.
  * @return SL_SUCCESS the file has the proper wav extension. SL_FAIL otherwise.
  */
-static SLenum sl_is_wave_file(SLstr path);
+static SL_RETURN_CODE sl_is_wave_file(SLstr path);
 
 /**
  * @brief Converts a SLuchar* buf to a SLushort, but takes into account the system's native endian-ness.
@@ -384,7 +383,7 @@ SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
 
 void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf) {
     if(wavBuf) {
-
+        //todo more potential undefined behavior.
         free(wavBuf->dataChunk.waveformData);
         wavBuf->dataChunk.waveformData = NULL;
     }
@@ -686,7 +685,7 @@ SL_RETURN_CODE sl_is_wave_file(SLstr path) {
         return SL_FAIL;
     }
 
-    SLenum res = (strcmp(wavExtension, path + path_len - wavExtensionLen) == 0 ||
+    SL_RETURN_CODE res = (strcmp(wavExtension, path + path_len - wavExtensionLen) == 0 ||
                   strcmp(waveExtension, path + path_len - waveExtensionLen) == 0)
                  ? SL_SUCCESS
                  : SL_FAIL;
@@ -719,11 +718,13 @@ SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen) {
     return value;
 }
 
+// todo this can literally be a macro
 SLshort sl_flip_endian_short(SLshort s) {
     // simple bitwise stuff to flip the endianness
     return (s >> 8) | (s << 8);
 }
 
+// todo this can literally be a macro
 SLint sl_flip_endian_int(SLint i) {
     // simple bitwise stuff to flip the endianness
     return ((i >> 24) & 0xff) |
@@ -807,7 +808,7 @@ typedef struct sl_sound {
  * @param device - Device to play sound to.
  * @return SL_SUCCESS if succeeded. SL_FAIL otherwise.
  */
-static SLenum sl_play_sound(SL_SOUND* sound, SLstr device);
+static SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device);
 
 /**
  * @brief Lower level way of playing a sound.
@@ -816,7 +817,7 @@ static SLenum sl_play_sound(SL_SOUND* sound, SLstr device);
  * @param sound - Sound to play.
  * @return SL_SUCCESS if succeeded. SL_FAIL otherwise.
  */
-static SLenum sl_play_sound_b(SL_SOUND* sound);
+static SL_RETURN_CODE sl_play_sound_b(SL_SOUND* sound);
 
 /**
  * @brief Plays sound in highest level way.
@@ -827,14 +828,14 @@ static SLenum sl_play_sound_b(SL_SOUND* sound);
  * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50% and so on)
  * @return SL_SUCCESS if succeeded. SL_FAIL otherwise.
  */
-static SLenum sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch);
+static SL_RETURN_CODE sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch);
 
 /**
  * @brief Parses sound format for specified sound.
  * @param sound - Sound to parse sound format for.
  * @return SL_SUCCESS if proeprly parsed. SL_FAIL otherwise.
  */
-static SLenum sl_parse_sound_format(SL_SOUND* sound);
+static SL_RETURN_CODE sl_parse_sound_format(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to mono (1 channel) for specified sound.
@@ -842,7 +843,7 @@ static SLenum sl_parse_sound_format(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-static SLenum sl_parse_mono(SL_SOUND* sound);
+static SL_RETURN_CODE sl_parse_mono(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to stereo (2 channels) for specified sound.
@@ -850,7 +851,7 @@ static SLenum sl_parse_mono(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-static SLenum sl_parse_stereo(SL_SOUND* sound);
+static SL_RETURN_CODE sl_parse_stereo(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to QUAD (4 channels) for specified sound.
@@ -858,7 +859,7 @@ static SLenum sl_parse_stereo(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-static SLenum sl_parse_quad(SL_SOUND* sound);
+static SL_RETURN_CODE sl_parse_quad(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to 5.1 (6 channels) for specified sound.
@@ -866,7 +867,7 @@ static SLenum sl_parse_quad(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-static SLenum sl_parse_51(SL_SOUND* sound);
+static SL_RETURN_CODE sl_parse_51(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to 6.1 (7 channels) for specified sound.
@@ -874,7 +875,7 @@ static SLenum sl_parse_51(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-static SLenum sl_parse_61(SL_SOUND* sound);
+static SL_RETURN_CODE sl_parse_61(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to 7.1 (8 channels) for specified sound.
@@ -882,7 +883,7 @@ static SLenum sl_parse_61(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-static SLenum sl_parse_71(SL_SOUND* sound);
+static SL_RETURN_CODE sl_parse_71(SL_SOUND* sound);
 
 /**
  * @brief Stops the sound if it is currently playing and cleans up OpenAL related things.
@@ -906,7 +907,7 @@ static void sl_cleanup_sound(SL_SOUND* sound);
  * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50% and so on)
  * @return SL_SUCCESS if everything went right. Anything else means something happened.
  */
-static SLenum sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
+static SL_RETURN_CODE sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
 
 /**
  * @brief Generates a SL_SOUND from the provided parameters and stores it in the provided buffer.
@@ -916,7 +917,7 @@ static SLenum sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain
  * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50% and so on)
  * @return SL_SUCCESS if everything went right. Anything else means something happened.
  */
-static SLenum sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch);
+static SL_RETURN_CODE sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch);
 
 /**
  * @brief Returns an array of audio devices.
@@ -935,7 +936,7 @@ static void sl_destroy_device_list(SLstr** devices);
 ///////////////// Wrapper Function Implementations ///////////////////
 //////////////////////////////////////////////////////////////////////
 
-SLenum sl_play_sound(SL_SOUND* sound, SLstr device) {
+SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device) {
 
     if(!sound) return SL_FAIL;
     // Initialize OpenAL
@@ -983,14 +984,14 @@ SLenum sl_play_sound(SL_SOUND* sound, SLstr device) {
     return SL_SUCCESS;
 }
 
-SLenum sl_play_sound_b(SL_SOUND* sound) {
+SL_RETURN_CODE sl_play_sound_b(SL_SOUND* sound) {
     return sl_play_sound(sound, NULL);
 }
 
-SLenum sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch) {
+SL_RETURN_CODE sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch) {
     SL_SOUND sound;
     SL_WAV_FILE buf;
-    SLenum out = sl_read_wave_file(path, &buf);
+    SL_RETURN_CODE out = sl_read_wave_file(path, &buf);
 
     if (out != SL_SUCCESS) return out;
 
@@ -1008,8 +1009,8 @@ SLenum sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch) {
     return out;
 }
 
-SLenum sl_parse_sound_format(SL_SOUND* sound) {
-    SLenum ret;
+SL_RETURN_CODE sl_parse_sound_format(SL_SOUND* sound) {
+    SL_RETURN_CODE ret;
 
     switch(sound->waveBuf->formatChunk.numChannels) {
         case 1: {
@@ -1045,7 +1046,7 @@ SLenum sl_parse_sound_format(SL_SOUND* sound) {
     return ret;
 }
 
-SLenum sl_parse_mono(SL_SOUND* sound) {
+SL_RETURN_CODE sl_parse_mono(SL_SOUND* sound) {
     switch(sound->waveBuf->dataChunk.pcmType) {
         case SL_UNSIGNED_8PCM: {
             sound->format = AL_FORMAT_MONO8;
@@ -1069,7 +1070,7 @@ SLenum sl_parse_mono(SL_SOUND* sound) {
     return SL_SUCCESS;
 }
 
-SLenum sl_parse_stereo(SL_SOUND* sound) {
+SL_RETURN_CODE sl_parse_stereo(SL_SOUND* sound) {
     switch(sound->waveBuf->dataChunk.pcmType) {
         case SL_UNSIGNED_8PCM: {
             sound->format = AL_FORMAT_STEREO8;
@@ -1093,7 +1094,7 @@ SLenum sl_parse_stereo(SL_SOUND* sound) {
     return SL_SUCCESS;
 }
 
-SLenum sl_parse_quad(SL_SOUND* sound) {
+SL_RETURN_CODE sl_parse_quad(SL_SOUND* sound) {
     switch(sound->waveBuf->dataChunk.pcmType) {
         case SL_UNSIGNED_8PCM: {
             sound->format = AL_FORMAT_QUAD8;
@@ -1117,7 +1118,7 @@ SLenum sl_parse_quad(SL_SOUND* sound) {
     return SL_SUCCESS;
 }
 
-SLenum sl_parse_51(SL_SOUND* sound) {
+SL_RETURN_CODE sl_parse_51(SL_SOUND* sound) {
     switch(sound->waveBuf->dataChunk.pcmType) {
         case SL_UNSIGNED_8PCM: {
             sound->format = AL_FORMAT_51CHN8;
@@ -1137,7 +1138,7 @@ SLenum sl_parse_51(SL_SOUND* sound) {
     return SL_SUCCESS;
 }
 
-SLenum sl_parse_61(SL_SOUND* sound) {
+SL_RETURN_CODE sl_parse_61(SL_SOUND* sound) {
     switch(sound->waveBuf->dataChunk.pcmType) {
         case SL_UNSIGNED_8PCM: {
             sound->format = AL_FORMAT_61CHN8;
@@ -1157,7 +1158,7 @@ SLenum sl_parse_61(SL_SOUND* sound) {
     return SL_SUCCESS;
 }
 
-SLenum sl_parse_71(SL_SOUND* sound) {
+SL_RETURN_CODE sl_parse_71(SL_SOUND* sound) {
     switch(sound->waveBuf->dataChunk.pcmType) {
         case SL_UNSIGNED_8PCM: {
             sound->format = AL_FORMAT_71CHN8;
@@ -1216,7 +1217,7 @@ void sl_cleanup_sound(SL_SOUND* sound) {
     }
 }
 
-SLenum sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
+SL_RETURN_CODE sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
 
     if(!waveBuf) return SL_FAIL;
 
@@ -1234,9 +1235,9 @@ SLenum sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLflo
     return sl_parse_sound_format(sound);
 }
 
-SLenum sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch) {
+SL_RETURN_CODE sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch) {
     SL_WAV_FILE buf;
-    SLenum out = sl_read_wave_file(path, &buf);
+    SL_RETURN_CODE out = sl_read_wave_file(path, &buf);
 
     if (out == SL_SUCCESS) {
         out = sl_gen_sound_a(sound, &buf, gain, pitch);
