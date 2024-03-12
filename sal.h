@@ -99,10 +99,10 @@ typedef enum {
 } SL_RETURN_CODE;
 
 ////////////////////////////////////////////////////////////////////////////////
-///////////////// Tells the native endian-ness of the system ///////////////////
+///////////////// Macro to get native endian-ness of the system ////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-static SLbool sysEndianness = 0;
+#define SYS_ENDIANNESS ((*(char*)&(int){1}) == 1 ? SL_LITTLE_ENDIAN : SL_BIG_ENDIAN)
 
 /////////////////////////////////////////////////////////////////////////////
 ///////////////// Simple Audio Library Global Definitions ///////////////////
@@ -111,27 +111,6 @@ static SLbool sysEndianness = 0;
 #define SL_BIG_ENDIAN 1
 #define SL_LITTLE_ENDIAN 0
 
-/////////////////////////////////////////////////////////////////////////////////////
-///////////////// Simple Audio Library Global Function Defintions ///////////////////
-/////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief Sound library init function. You MUST call this even when using the wave file parser.
- * @return SL_SUCCESS if succeeded. If anything else is returned, the function failed.
- */
-static SL_RETURN_CODE sl_init(void);
-
-//////////////////////////////////////////////////////////////////////////////////////////
-///////////////// Simple Audio Library Global Function Implementations ///////////////////
-//////////////////////////////////////////////////////////////////////////////////////////
-
-SL_RETURN_CODE sl_init(void) {
-    //quickly check the endianness of the system
-    int n = 1;
-    sysEndianness = *(char*)&n == 1 ? SL_LITTLE_ENDIAN : SL_BIG_ENDIAN;
-
-    return SL_SUCCESS;
-}
 
 ////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Pcm types ///////////////////
@@ -335,7 +314,7 @@ SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
     FILE* file;
 
     //ensure pointers are good were just going to assume the user allocated stuff right
-    if (path != NULL) {
+    if (path == NULL) {
         ret = SL_INVALID_VALUE;
         goto exit;
     }
@@ -616,7 +595,8 @@ SL_RETURN_CODE sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
 }
 
 SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
-    if(sysEndianness != SL_LITTLE_ENDIAN) {
+    volatile SLbool endianness = SYS_ENDIANNESS;
+    if(endianness != SL_LITTLE_ENDIAN) {
         switch (wavBuf->dataChunk.pcmType) {
             case SL_UNSIGNED_8PCM:
                 break;
@@ -687,7 +667,8 @@ SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen) {
     if(buf == NULL || bufLen < 2) return 0;
 
     SLuint value;
-    if(sysEndianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8);
+    volatile SLbool endianness = SYS_ENDIANNESS;
+    if(endianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8);
     else value = buf[1] | (buf[0] << 8);
 
     return value;
@@ -697,7 +678,8 @@ SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen) {
     if(buf == NULL || bufLen < 4) return 0;
 
     SLuint value;
-    if(sysEndianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
+    volatile SLbool endianness = SYS_ENDIANNESS;
+    if(endianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
     else value = buf[3] | (buf[2] << 8) | (buf[1] << 16) | (buf[0] << 24);
 
     return value;
