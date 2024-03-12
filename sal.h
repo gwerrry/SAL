@@ -1,7 +1,7 @@
 /**
  * @file sal.h
  * @author gwerry
- * @brief Simple Audio Library for parsing WAVE files and
+ * @brief Simple Audio Library for parsing WAVE files and playing WAVE sounds.
  * @version 2.0
  * @date 2024/03/12
  *
