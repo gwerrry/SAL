@@ -6,15 +6,22 @@ This library is designed to be a simple way to parse and play WAVE files in C. I
 
 ## Including
 SAL is a single include header. 
-Simply copy ```sal.h``` in your project and you are good to go.   
+Simply copy `sal.h` in your project and you are good to go.   
 
-- If you want to use the OpenAL wrapper and just want the WAVE file parser, you must use ```OpenAL Soft``` or another variation that includes the multi-channel ```OpenAL``` extension.
-You also need a version of ```ALUT```. This project was tested using ```OpenAL Soft``` and ```freealut```.
+- If you want to use the OpenAL wrapper and just want the WAVE file parser, you must use `OpenAL Soft` or another variation that includes the multi-channel `OpenAL` extension.
+You also need a version of `ALUT`. This project was tested using `OpenAL Soft` and `freealut`.
 
-- If you do not want to use the ```OpenAL``` wrapper, comment out the line found near the top of the header file:
+- If you do not want to use the `OpenAL` wrapper, comment out the line found near the top of the header file:
 ```c
 #define SL_OPENAL_WRAPPER
+```  
+
+- If you want to use sal as a DLL, you need to uncomment the line foundnear the top of the header file:
+```c
+// #define USE_DLL_LINKING // un-comment this if you want to use DLL linking
 ```
+
+> Note that the filename `sal.h` can cause issues with linking on Windows in certain cases. To fix this, rename `sal.h` to something else.
 
 ## Supported Sound formats
 SAL only supports standard WAVE files in little-endian.
@@ -66,23 +73,23 @@ SAL only supports standard WAVE files in little-endian.
 #### IMPORTANT NOTE: You MUST call sl_init() before using and SAL functions regardless of if you only want to use the parser or OpenAL Wrapper.
 
 ### Types
-SAL uses some custom type definitions.
+SAL uses some custom typenames.
 You can ignore them in most use cases and use the STL counterpart.
 
 ```
-#define SLbool   int8_t
-#define SLchar   int8_t
-#define SLuchar  uint8_t
-#define SLshort  int16_t
-#define SLushort uint16_t
-#define SLint    int32_t
-#define SLuint   uint32_t
-#define SLenum   uint32_t
-#define SLullong uint64_t
-#define SLfloat  float
-#define SLdouble double
-#define SLstr    const char*
-#define SLvoid   void*
+SLbool   🠲 int8_t
+SLchar   🠲 int8_t
+SLuchar  🠲 uint8_t
+SLshort  🠲 int16_t
+SLushort 🠲 uint16_t
+SLint    🠲 int32_t
+SLuint   🠲 uint32_t
+SLenum   🠲 uint32_t
+SLullong 🠲 uint64_t
+SLfloat  🠲 float
+SLdouble 🠲 double
+SLstr    🠲 const char*
+SLvoid   🠲 void*
 ```
 
 ### SAL Functions to care about

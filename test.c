@@ -3,13 +3,12 @@
 //CHANGE THESE FOR WHAT TEST YOU WANT
 
 //#define PARSER_TEST
-#define AL_TEST
-//#define SIMPLE_SOUND_TEST
+//#define AL_TEST
+#define SIMPLE_SOUND_TEST
 
 #ifdef PARSER_TEST
 int main(void) {
-    sl_init();
-    SLenum out = SL_FAIL;
+    SL_RETURN_CODE out = SL_FAIL;
     SL_WAV_FILE buf;
     char path[256];
 
@@ -35,8 +34,7 @@ int main(void) {
 #elif defined(AL_TEST)
 
 int main(void) {
-    sl_init();
-    SLenum out = SL_FAIL;
+    SL_RETURN_CODE out = SL_FAIL;
 
     // get devices
 
@@ -48,7 +46,7 @@ int main(void) {
     char path[256];
     char device_num_str[20];
 
-    if (!devices) {
+    if (devices == NULL) {
         printf("Failed to get devices.\n");
         goto exit;
     }
@@ -95,15 +93,14 @@ int main(void) {
     printf(out == SL_SUCCESS ? "Successfully played the sound.\n" : "Failed to play the sound.\n");
 
     exit:
-        free((void*)chosen_device);
+        if(chosen_device != NULL) free((void*)chosen_device);
         sl_cleanup_sound(&sound);
         return out;
 }
 
 #elif defined(SIMPLE_SOUND_TEST)
 int main(void) {
-    sl_init();
-    SLenum out = SL_FAIL;
+    SL_RETURN_CODE out = SL_FAIL;
 
     // get devices
     SLstr* devices = sl_get_devices();
