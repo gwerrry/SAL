@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.9)
 
-project(SAL VERSION 1.0 DESCRIPTION "Simple Audio Library")
+project(SAL VERSION 2.1.0 DESCRIPTION "Simple Audio Library")
+
+add_compile_definitions(SAL_VERSION="${PROJECT_VERSION}")
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -23,7 +25,6 @@ if (WIN32)
 endif()
 
 find_package(OpenAL CONFIG REQUIRED) # comment out if you dont want to try with openal
-find_package(FreeALUT CONFIG REQUIRED) # comment out if you dont want to try with openal
 
 add_executable(${PROJECT_NAME}
         sal.h
@@ -31,4 +32,3 @@ add_executable(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenAL::OpenAL) # comment out if you dont want to try with openal
-target_link_libraries(${PROJECT_NAME} PRIVATE FreeALUT::alut) # comment out if you dont want to try with openal
