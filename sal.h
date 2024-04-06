@@ -712,8 +712,10 @@ DLL_EXPORT SL_RETURN_CODE sl_is_wave_file(SLstr path) {
 
     strcpy(toCheck, path);
 
-    for (int i = 0; i < path_len; i++)
-       toCheck[i] = tolower(toCheck[i]);
+    for (int i = path_len-1; i >= 0; i--) {
+        if(toCheck[i] == '.') break;
+        toCheck[i] = tolower(toCheck[i]);
+    }
 
     SL_RETURN_CODE res = (strcmp(wavExtension, toCheck + path_len - wavExtensionLen) == 0 ||
                   strcmp(waveExtension, toCheck + path_len - waveExtensionLen) == 0)
