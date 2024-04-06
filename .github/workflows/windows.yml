@@ -28,7 +28,6 @@ jobs:
         .\bootstrap-vcpkg.bat -disableMetrics
         .\vcpkg integrate install
         .\vcpkg install openal-soft:x64-windows
-        .\vcpkg install freealut:x64-windows
         
     - name: Configure and build with MSVC
       run: |
