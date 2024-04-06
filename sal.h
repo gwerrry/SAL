@@ -2,8 +2,8 @@
  * @file sal.h
  * @author gwerry
  * @brief Simple Audio Library for parsing WAVE files and playing WAVE sounds.
- * @version 2.0
- * @date 2024/03/17
+ * @version 3.0.0
+ * @date 2024/04/06
  *
  * Copyright 2024 gwerry
  *
@@ -32,6 +32,17 @@ extern "C" {
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <ctype.h>
+
+#ifdef _WIN32
+
+#include <windows.h>
+
+#elif defined(__linux__) || defined(__APPLE__)
+
+#include <unistd.h>
+
+#endif // _WIN32
 
 /////////////////////////////////////////////////////////////
 ///////////////// Option for DLL linking. ///////////////////
@@ -52,7 +63,9 @@ extern "C" {
 ////////////////////////////////////////////////////////////
 ///////////////// Version of SAL header. ///////////////////
 ////////////////////////////////////////////////////////////
-#define SL_VERSION "2.0.0"
+#ifndef SAL_VERSION
+#define SAL_VERSION "3.0.0"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////// Controls if you want to use the OpenAL wrapper. Comment it out if you don't want to use it. ///////////////////
@@ -91,6 +104,7 @@ DLL_EXPORT typedef void*       SLvoid;
 DLL_EXPORT typedef enum {
     SL_SUCCESS = 69420,
     SL_FAIL = 66666,
+    SL_MALLOC_FAIL = 66667,
     SL_INVALID_VALUE = 61616,
 
     SL_FILE_ERROR = 62636,
@@ -114,7 +128,6 @@ DLL_EXPORT typedef enum {
     SL_INVALID_CHUNK_DATA_DATA = 30666
 } SL_RETURN_CODE;
 
-//TODO add version getting and make sys endianness macro into function taht cna be used
 /////////////////////////////////////////////////////////////////////
 ///////////////// Simple Audio Library Global stuff /////////////////
 /////////////////////////////////////////////////////////////////////
@@ -125,11 +138,30 @@ DLL_EXPORT typedef enum {
 } SL_ENDIANNESS;
 
 // get native endian-ness of the system
-DLL_EXPORT SL_ENDIANNESS get_native_endianness() {
+DLL_EXPORT SL_ENDIANNESS sl_get_native_endianness() {
     int n = 1;
     SL_ENDIANNESS ret = *(char*)&n == 1 ? SL_LITTLE_ENDIAN : SL_BIG_ENDIAN;
 
     return ret;
+}
+
+// get sal version
+DLL_EXPORT SLstr sl_get_version() {
+    return SAL_VERSION;
+}
+
+// sleep function that supports Windows Linux and Macos (macos not tested) // todo test macos stuff eventually...
+DLL_EXPORT void sl_sleep(float duration) {
+    if (duration < 0) return;
+
+    long milliseconds = (long)(duration * 1000);
+
+    // Sleep for the specified duration
+    #ifdef _WIN32
+        Sleep(milliseconds); // Windows
+    #elif defined(__linux__) || defined(__APPLE__)
+        usleep(milliseconds * 1000); // Linux & MacOS
+    #endif // _WIN32
 }
 
 ////////////////////////////////////////////////////////////////
@@ -586,7 +618,7 @@ DLL_EXPORT SL_RETURN_CODE sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBu
 
     wavBuf->dataChunk.waveformData = malloc(wavBuf->dataChunk.dataChunkSize);
     if (wavBuf->dataChunk.waveformData == NULL)
-        return SL_FAIL;
+        return SL_MALLOC_FAIL;
 
     // Ensure the buffer size is even
     blocksRead = fread(wavBuf->dataChunk.waveformData, wavBuf->dataChunk.dataChunkSize, 1, file);
@@ -615,7 +647,7 @@ DLL_EXPORT SL_RETURN_CODE sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
 }
 
 DLL_EXPORT SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
-    volatile SLbool endianness = get_native_endianness();
+    volatile SLbool endianness = sl_get_native_endianness();
     if(endianness != SL_LITTLE_ENDIAN) {
         switch (wavBuf->dataChunk.pcmType) {
             case SL_UNSIGNED_8PCM:
@@ -674,11 +706,23 @@ DLL_EXPORT SL_RETURN_CODE sl_is_wave_file(SLstr path) {
 
     if (wavExtensionLen > path_len && waveExtensionLen > path_len) return SL_FAIL;
 
-    SL_RETURN_CODE res = (strcmp(wavExtension, path + path_len - wavExtensionLen) == 0 ||
-                  strcmp(waveExtension, path + path_len - waveExtensionLen) == 0)
+    char* toCheck = malloc(sizeof(char) * path_len + 1);
+
+    if(toCheck == NULL) return SL_MALLOC_FAIL;
+
+    strcpy(toCheck, path);
+
+    for (int i = path_len-1; i >= 0; i--) {
+        if(toCheck[i] == '.') break;
+        toCheck[i] = tolower(toCheck[i]);
+    }
+
+    SL_RETURN_CODE res = (strcmp(wavExtension, toCheck + path_len - wavExtensionLen) == 0 ||
+                  strcmp(waveExtension, toCheck + path_len - waveExtensionLen) == 0)
                  ? SL_SUCCESS
                  : SL_FAIL;
 
+    free(toCheck);
     return res;
 }
 
@@ -687,7 +731,7 @@ DLL_EXPORT SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen)
     if(buf == NULL || bufLen < 2) return 0;
 
     SLuint value;
-    volatile SLbool endianness = get_native_endianness();
+    volatile SLbool endianness = sl_get_native_endianness();
     if(endianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8);
     else value = buf[1] | (buf[0] << 8);
 
@@ -698,7 +742,7 @@ DLL_EXPORT SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen) {
     if(buf == NULL || bufLen < 4) return 0;
 
     SLuint value;
-    volatile SLbool endianness = get_native_endianness();
+    volatile SLbool endianness = sl_get_native_endianness();
     if(endianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
     else value = buf[3] | (buf[2] << 8) | (buf[1] << 16) | (buf[0] << 24);
 
@@ -758,7 +802,6 @@ DLL_EXPORT SLdouble sl_flip_endian_double(SLdouble d) {
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <AL/alext.h>
-#include <AL/alut.h>
 
 ////////////////////////////////////////////////////////////////
 ///////////////// Wrapper Struct Definitions ///////////////////
@@ -949,7 +992,7 @@ DLL_EXPORT SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device) {
     alSourcePlay(sound->source);
 
     // Wait for playback to finish
-    alutSleep(sound->duration);
+    sl_sleep(sound->duration);
 
     //ensure it's done playing
     ALint state;

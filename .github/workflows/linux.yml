@@ -29,7 +29,6 @@ jobs:
         sudo ./bootstrap-vcpkg.sh -disableMetrics
         sudo ./vcpkg integrate install
         sudo ./vcpkg install openal-soft:x64-linux
-        sudo ./vcpkg install freealut:x64-linux
         
     - name: Configure and build with GCC
       run: |
@@ -60,7 +59,6 @@ jobs:
         sudo ./bootstrap-vcpkg.sh -disableMetrics
         sudo ./vcpkg integrate install
         sudo ./vcpkg install openal-soft:x64-linux
-        sudo ./vcpkg install freealut:x64-linux
       
     - name: Configure and build with Clang
       run: |

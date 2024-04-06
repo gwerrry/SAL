@@ -1,5 +1,6 @@
 # Simple Audio Library (SAL)
 This library is designed to be a simple way to parse and play WAVE files in C. It includes a basic WAVE file parser and an optional OpenAL wrapper.
+It is tested to work down to C99.
 
 [![windows](https://github.com/gwerrry/SAL/actions/workflows/windows.yml/badge.svg)](https://github.com/gwerrry/SAL/actions/workflows/windows.yml)
 [![linux](https://github.com/gwerrry/SAL/actions/workflows/linux.yml/badge.svg)](https://github.com/gwerrry/SAL/actions/workflows/linux.yml)
@@ -9,7 +10,7 @@ SAL is a single include header.
 Simply copy `sal.h` in your project and you are good to go.   
 
 - If you want to use the OpenAL wrapper and just want the WAVE file parser, you must use `OpenAL Soft` or another variation that includes the multi-channel `OpenAL` extension.
-You also need a version of `ALUT`. This project was tested using `OpenAL Soft` and `freealut`.
+This library was tested using `OpenAL Soft`.
 
 - If you do not want to use the `OpenAL` wrapper, comment out the line found near the top of the header file:
 ```c
@@ -70,8 +71,6 @@ SAL only supports standard WAVE files in little-endian.
 
 ## Usage
 
-#### IMPORTANT NOTE: You MUST call sl_init() before using and SAL functions regardless of if you only want to use the parser or OpenAL Wrapper.
-
 ### Types
 SAL uses some custom typenames.
 You can ignore them in most use cases and use the STL counterpart.
@@ -97,14 +96,14 @@ If you want to know ALL of the functions, there are clearly commented sections i
 This section will provide all the functions the user (YOU) should use.
 
 ```c
-//////////////////////////////////////////////////////
-///////////////// Global Functions ///////////////////
-//////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+///////////////// Simple Audio Library Global stuff /////////////////
+/////////////////////////////////////////////////////////////////////
 
-// Sound library init function. You MUST call this even when using the wave file parser.
-// SL_SUCCESS if succeeded. If anything else is returned, the function failed.
-// tbh this technically does not return anything else other than success rn...
-static SLenum sl_init(void);
+// get sal version
+DLL_EXPORT SLstr sl_get_version() {
+    return SAL_VERSION;
+}
 
 //////////////////////////////////////////////////////
 ///////////////// Parser Functions ///////////////////
