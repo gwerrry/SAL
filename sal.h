@@ -32,6 +32,7 @@ extern "C" {
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <ctype.h>
 
 #ifdef _WIN32
 
@@ -103,6 +104,7 @@ DLL_EXPORT typedef void*       SLvoid;
 DLL_EXPORT typedef enum {
     SL_SUCCESS = 69420,
     SL_FAIL = 66666,
+    SL_MALLOC_FAIL = 66667,
     SL_INVALID_VALUE = 61616,
 
     SL_FILE_ERROR = 62636,
@@ -616,7 +618,7 @@ DLL_EXPORT SL_RETURN_CODE sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBu
 
     wavBuf->dataChunk.waveformData = malloc(wavBuf->dataChunk.dataChunkSize);
     if (wavBuf->dataChunk.waveformData == NULL)
-        return SL_FAIL;
+        return SL_MALLOC_FAIL;
 
     // Ensure the buffer size is even
     blocksRead = fread(wavBuf->dataChunk.waveformData, wavBuf->dataChunk.dataChunkSize, 1, file);
@@ -704,11 +706,21 @@ DLL_EXPORT SL_RETURN_CODE sl_is_wave_file(SLstr path) {
 
     if (wavExtensionLen > path_len && waveExtensionLen > path_len) return SL_FAIL;
 
-    SL_RETURN_CODE res = (strcmp(wavExtension, path + path_len - wavExtensionLen) == 0 ||
-                  strcmp(waveExtension, path + path_len - waveExtensionLen) == 0)
+    char* toCheck = malloc(sizeof(char) * path_len + 1);
+
+    if(toCheck == NULL) return SL_MALLOC_FAIL;
+
+    strcpy(toCheck, path);
+
+    for (int i = 0; i < path_len; i++)
+       toCheck[i] = tolower(toCheck[i]);
+
+    SL_RETURN_CODE res = (strcmp(wavExtension, toCheck + path_len - wavExtensionLen) == 0 ||
+                  strcmp(waveExtension, toCheck + path_len - waveExtensionLen) == 0)
                  ? SL_SUCCESS
                  : SL_FAIL;
 
+    free(toCheck);
     return res;
 }
 
