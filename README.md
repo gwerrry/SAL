@@ -1,5 +1,6 @@
 # Simple Audio Library (SAL)
 This library is designed to be a simple way to parse and play WAVE files in C. It includes a basic WAVE file parser and an optional OpenAL wrapper.
+It is tested to work down to C99.
 
 [![windows](https://github.com/gwerrry/SAL/actions/workflows/windows.yml/badge.svg)](https://github.com/gwerrry/SAL/actions/workflows/windows.yml)
 [![linux](https://github.com/gwerrry/SAL/actions/workflows/linux.yml/badge.svg)](https://github.com/gwerrry/SAL/actions/workflows/linux.yml)
