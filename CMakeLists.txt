@@ -1,13 +1,10 @@
 cmake_minimum_required(VERSION 3.9)
 
-project(SAL VERSION 2.1.0 DESCRIPTION "Simple Audio Library")
+project(SAL VERSION 3.0.0 DESCRIPTION "Simple Audio Library")
 
 add_compile_definitions(SAL_VERSION="${PROJECT_VERSION}")
 
-set(CMAKE_C_STANDARD 17)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD 99)
 
 if ( NOT CMAKE_BUILD_TYPE )
     message( "Build Type not set, defaulting to Debug..." )
