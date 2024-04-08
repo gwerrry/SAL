@@ -112,13 +112,13 @@ DLL_EXPORT SLstr sl_get_version() {
 // Used to parse the WAVE file at the specified path.
 // Takes a path and a buffer.
 // Returns SL_SUCCESS if succeeded.
-static SLenum sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
+DLL_EXPORT SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
 
 // Used to free the memory allocated for the WAVE file.
-static void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf);
+DLL_EXPORT void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf);
 
 // Returns SL_SUCCESS if the file has a proper wav extension. SL_FAIL otherwise.
-static SLenum sl_is_wave_file(SLstr path); 
+DLL_EXPORT SL_RETURN_CODE sl_is_wave_file(SLstr path); 
 
 ///////////////////////////////////////////////////////
 ///////////////// Wrapper Functions ///////////////////
@@ -126,41 +126,41 @@ static SLenum sl_is_wave_file(SLstr path);
 
 // Plays the specified sound at the specified device. Use NULL for default device.
 // Returns SL_SUCCESS if everything went right. Anything else means something happened.
-static SLenum sl_play_sound(SL_SOUND* sound, SLstr device);
+DLL_EXPORT SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device);
 
 // Does the same thing as the above function except it chooses the default device.
 // Returns SL_SUCCESS if everything went right. Anything else means something happened.
-static SLenum sl_play_sound_b(SL_SOUND* sound);
+DLL_EXPORT SL_RETURN_CODE sl_play_sound_b(SL_SOUND* sound);
 
 // High level function that parses the WAVE file at the specified path, generates a SL_SOUND, plays the sound, and frees the memory for you.
 // Use this if you want the easy way out.
 // Returns SL_SUCCESS if everything went right. Anything else means something happened.
-static SLenum sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch);
+DLL_EXPORT SL_RETURN_CODE sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch);
 
 // Stops the sound if it is currently playing and cleans up OpenAL related things. This does not free any other sound things. It simply stops the sound and cleans up OpenAL stuff.
-static void sl_stop_sound(SL_SOUND* sound);
+DLL_EXPORT void sl_stop_sound(SL_SOUND* sound);
 
 // Cleans up the sound. Make sure you call this to clean it up. It will free everything that needs to be freed for you.
-static void sl_cleanup_sound(SL_SOUND* sound);
+DLL_EXPORT void sl_cleanup_sound(SL_SOUND* sound);
 
 // Generates a SL_SOUND from the provided parameters and stores it in the provided SL_SOUND buffer.
 // This function takes the wavBuf instead of path. It is more work for you :)
 // Gain in pitch are in percent so 1.0 is 100%, 0.5 is 50% and so on.
 // Returns SL_SUCCESS if everything went right. Anything else means something happened.
-static SLenum sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
+DLL_EXPORT SL_RETURN_CODE sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
 
 // Generates a SL_SOUND from the provided parameters and stores it in the provided buffer.
 // Gain in pitch are in percent so 1.0 is 100%, 0.5 is 50% and so on.
 // Returns SL_SUCCESS if everything went right. Anything else means something happened.
-static SLenum sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch);
+DLL_EXPORT SL_RETURN_CODE sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch);
 
 // Returns an array of SLstr audio devices.
 // The array returned is NULL at the end, so just loop until null when using this. This can return just NULL if something goes wrong.
-static SLstr* sl_get_devices(void);
+DLL_EXPORT SLstr* sl_get_devices(void);
 
 // Frees the device list that is returned by sl_get_devices(void).
 // Must be called on the device list that was returned to free it. You could do it yourself, but this makes it easy.
-static void sl_destroy_device_list(SLstr** devices);
+DLL_EXPORT void sl_destroy_device_list(SLstr** devices);
 ```
 ## Examples
 You can find usage examples in [test.c](test.c).
