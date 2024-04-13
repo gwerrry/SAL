@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.9)
 
-project(SAL VERSION 3.0.0 DESCRIPTION "Simple Audio Library")
+project(SAL VERSION 3.1.0 DESCRIPTION "Simple Audio Library")
 
 add_compile_definitions(SAL_VERSION="${PROJECT_VERSION}")
 
