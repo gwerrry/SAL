@@ -138,7 +138,7 @@ DLL_EXPORT typedef enum {
 } SL_ENDIANNESS;
 
 // get native endian-ness of the system
-DLL_EXPORT SL_ENDIANNESS sl_get_native_endianness() {
+DLL_EXPORT static SL_ENDIANNESS sl_get_native_endianness() {
     int n = 1;
     SL_ENDIANNESS ret = *(char*)&n == 1 ? SL_LITTLE_ENDIAN : SL_BIG_ENDIAN;
 
@@ -146,12 +146,12 @@ DLL_EXPORT SL_ENDIANNESS sl_get_native_endianness() {
 }
 
 // get sal version
-DLL_EXPORT SLstr sl_get_version() {
+DLL_EXPORT static SLstr sl_get_version() {
     return SAL_VERSION;
 }
 
 // sleep function that supports Windows Linux and Macos (macos not tested) // todo test macos stuff eventually...
-DLL_EXPORT void sl_sleep(float duration) {
+DLL_EXPORT static void sl_sleep(float duration) {
     if (duration < 0) return;
 
     long milliseconds = (long)(duration * 1000);
@@ -250,13 +250,13 @@ DLL_EXPORT typedef struct sl_wav_file {
  * @param wavBufPtr - Buffer for the WAVE file.
  * @return SL_SUCCESS if succeeded. There are many useful return codes documented on the Github so you can debug anything else that happens.
  */
-DLL_EXPORT SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
+DLL_EXPORT static SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Frees the memory associated with the WAVE file.
  * @param buf - Buffer of WAVE file to free.
  */
-DLL_EXPORT void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf);
+DLL_EXPORT static void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Reads WAVE descriptor chunk. This is a helper function and should not be used except by SAL.
@@ -264,7 +264,7 @@ DLL_EXPORT void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf);
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT SL_RETURN_CODE sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf);
+DLL_EXPORT static SL_RETURN_CODE sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Parses WAVE chunks. This is a helper function and should not be used except by SAL.
@@ -272,7 +272,7 @@ DLL_EXPORT SL_RETURN_CODE sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBu
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT SL_RETURN_CODE sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf);
+DLL_EXPORT static SL_RETURN_CODE sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Reads WAVE format chunk. This is a helper function and should not be used except by SAL.
@@ -280,7 +280,7 @@ DLL_EXPORT SL_RETURN_CODE sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf);
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT SL_RETURN_CODE sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf);
+DLL_EXPORT static SL_RETURN_CODE sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Reads WAVE data chunk. This is a helper function and should not be used except by SAL.
@@ -288,28 +288,28 @@ DLL_EXPORT SL_RETURN_CODE sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wav
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT SL_RETURN_CODE sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf);
+DLL_EXPORT static SL_RETURN_CODE sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Ensures WAVE data ends on a proper byte boundary. This is a helper function and should not be used except by SAL.
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT SL_RETURN_CODE sl_validate_wave_data(SL_WAV_FILE* wavBuf);
+DLL_EXPORT static SL_RETURN_CODE sl_validate_wave_data(SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Ensures WAVE data endian-ness is correct. This is a helper function and should not be used except by SAL.
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf);
+DLL_EXPORT static SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf);
 
 /**
  * @brief This is just for checking if the path provided ends with ".wav" or ".wave".
  * @param str - Path to check.
  * @return SL_SUCCESS the file has the proper wav extension. SL_FAIL otherwise.
  */
-DLL_EXPORT SL_RETURN_CODE sl_is_wave_file(SLstr path);
+DLL_EXPORT static SL_RETURN_CODE sl_is_wave_file(SLstr path);
 
 /**
  * @brief Converts a SLuchar* buf to a SLushort, but takes into account the system's native endian-ness.
@@ -317,7 +317,7 @@ DLL_EXPORT SL_RETURN_CODE sl_is_wave_file(SLstr path);
  * @param bufLen - Length of SLuchar buffer to convert.
  * @return The value of the buffer represented as a SLushort taking into account the system's native endian-ness. Returns zero if it fails. I know it's not helpful, but you can debug!
  */
-DLL_EXPORT SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen);
+DLL_EXPORT static SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen);
 
 /**
  * @brief Converts a SLuchar* buf to a SLuint, but takes into account the system's native endian-ness.
@@ -325,35 +325,35 @@ DLL_EXPORT SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen)
  * @param bufLen - Length of SLuchar buffer to convert.
  * @return The value of the buffer represented as a SLuint taking into account the system's native endian-ness. Returns zero if it fails. I know it's not helpful, but you can debug!
  */
-DLL_EXPORT SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen);
+DLL_EXPORT static SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen);
 
 /**
  * @brief Flips the endian-ness of a SLshort.
  * @param s SLshort to flip.
  * @return SLshort with the endian-ness flipped.
  */
-DLL_EXPORT SLshort sl_flip_endian_short(SLshort s);
+DLL_EXPORT static SLshort sl_flip_endian_short(SLshort s);
 
 /**
  * @brief Flips the endian-ness of a SLint.
  * @param i SLint to flip.
  * @return SLint with the endian-ness flipped.
  */
-DLL_EXPORT SLint sl_flip_endian_int(SLint i);
+DLL_EXPORT static SLint sl_flip_endian_int(SLint i);
 
 /**
  * @brief Flips the endian-ness of a SLfloat.
  * @param f SLfloat to flip.
  * @return SLfloat with the endian-ness flipped.
  */
-DLL_EXPORT SLfloat sl_flip_endian_float(SLfloat f);
+DLL_EXPORT static SLfloat sl_flip_endian_float(SLfloat f);
 
 /**
  * @brief Flips the endian-ness of a SLdouble.
  * @param d SLdouble to flip.
  * @return SLdouble with the endian-ness flipped.
  */
-DLL_EXPORT SLdouble sl_flip_endian_double(SLdouble d);
+DLL_EXPORT static SLdouble sl_flip_endian_double(SLdouble d);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Function Implementations ///////////////////
@@ -832,7 +832,7 @@ DLL_EXPORT typedef struct sl_sound {
  * @param device - Device to play sound to.
  * @return SL_SUCCESS if succeeded. SL_FAIL otherwise.
  */
-DLL_EXPORT SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device);
+DLL_EXPORT static SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device);
 
 /**
  * @brief Lower level way of playing a sound.
@@ -841,7 +841,7 @@ DLL_EXPORT SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device);
  * @param sound - Sound to play.
  * @return SL_SUCCESS if succeeded. SL_FAIL otherwise.
  */
-DLL_EXPORT SL_RETURN_CODE sl_play_sound_b(SL_SOUND* sound);
+DLL_EXPORT static SL_RETURN_CODE sl_play_sound_b(SL_SOUND* sound);
 
 /**
  * @brief Plays sound in highest level way.
@@ -852,14 +852,14 @@ DLL_EXPORT SL_RETURN_CODE sl_play_sound_b(SL_SOUND* sound);
  * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50% and so on)
  * @return SL_SUCCESS if succeeded. SL_FAIL otherwise.
  */
-DLL_EXPORT SL_RETURN_CODE sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch);
+DLL_EXPORT static SL_RETURN_CODE sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch);
 
 /**
  * @brief Parses sound format for specified sound.
  * @param sound - Sound to parse sound format for.
  * @return SL_SUCCESS if proeprly parsed. SL_FAIL otherwise.
  */
-DLL_EXPORT SL_RETURN_CODE sl_parse_sound_format(SL_SOUND* sound);
+DLL_EXPORT static SL_RETURN_CODE sl_parse_sound_format(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to mono (1 channel) for specified sound.
@@ -867,7 +867,7 @@ DLL_EXPORT SL_RETURN_CODE sl_parse_sound_format(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT SL_RETURN_CODE sl_parse_mono(SL_SOUND* sound);
+DLL_EXPORT static SL_RETURN_CODE sl_parse_mono(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to stereo (2 channels) for specified sound.
@@ -875,7 +875,7 @@ DLL_EXPORT SL_RETURN_CODE sl_parse_mono(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT SL_RETURN_CODE sl_parse_stereo(SL_SOUND* sound);
+DLL_EXPORT static SL_RETURN_CODE sl_parse_stereo(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to QUAD (4 channels) for specified sound.
@@ -883,7 +883,7 @@ DLL_EXPORT SL_RETURN_CODE sl_parse_stereo(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT SL_RETURN_CODE sl_parse_quad(SL_SOUND* sound);
+DLL_EXPORT static SL_RETURN_CODE sl_parse_quad(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to 5.1 (6 channels) for specified sound.
@@ -891,7 +891,7 @@ DLL_EXPORT SL_RETURN_CODE sl_parse_quad(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT SL_RETURN_CODE sl_parse_51(SL_SOUND* sound);
+DLL_EXPORT static SL_RETURN_CODE sl_parse_51(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to 6.1 (7 channels) for specified sound.
@@ -899,7 +899,7 @@ DLL_EXPORT SL_RETURN_CODE sl_parse_51(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT SL_RETURN_CODE sl_parse_61(SL_SOUND* sound);
+DLL_EXPORT static SL_RETURN_CODE sl_parse_61(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to 7.1 (8 channels) for specified sound.
@@ -907,21 +907,21 @@ DLL_EXPORT SL_RETURN_CODE sl_parse_61(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT SL_RETURN_CODE sl_parse_71(SL_SOUND* sound);
+DLL_EXPORT static SL_RETURN_CODE sl_parse_71(SL_SOUND* sound);
 
 /**
  * @brief Stops the sound if it is currently playing and cleans up OpenAL related things.
  * This does not free any other sound things. It simply stops the sound and cleans up OpenAL stuff.
  * @param sound - Sound to stop.
  */
-DLL_EXPORT void sl_stop_sound(SL_SOUND* sound);
+DLL_EXPORT static void sl_stop_sound(SL_SOUND* sound);
 
 /**
  * @brief Cleans up the sound.
  * Make sure to call this if you are doing things manually.
  * @param sound - Sound to clean up.
  */
-DLL_EXPORT void sl_cleanup_sound(SL_SOUND* sound);
+DLL_EXPORT static void sl_cleanup_sound(SL_SOUND* sound);
 
 /**
  * @brief Generates a SL_SOUND from the provided parameters and stores it in the provided buffer.
@@ -931,7 +931,7 @@ DLL_EXPORT void sl_cleanup_sound(SL_SOUND* sound);
  * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50% and so on)
  * @return SL_SUCCESS if everything went right. Anything else means something happened.
  */
-DLL_EXPORT SL_RETURN_CODE sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
+DLL_EXPORT static SL_RETURN_CODE sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
 
 /**
  * @brief Generates a SL_SOUND from the provided parameters and stores it in the provided buffer.
@@ -941,20 +941,20 @@ DLL_EXPORT SL_RETURN_CODE sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, 
  * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50% and so on)
  * @return SL_SUCCESS if everything went right. Anything else means something happened.
  */
-DLL_EXPORT SL_RETURN_CODE sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch);
+DLL_EXPORT static SL_RETURN_CODE sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch);
 
 /**
  * @brief Returns an array of audio devices.
  * @return SLstr* array of audio devices.
  */
-DLL_EXPORT SLstr* sl_get_devices(void);
+DLL_EXPORT static SLstr* sl_get_devices(void);
 
 /**
  * @brief Frees the device list that is returned by sl_get_devices(void).
  * Must be called on the device list that was returned to free it.
  * @param devices - Device list to free.
  */
-DLL_EXPORT void sl_destroy_device_list(SLstr** devices);
+DLL_EXPORT static void sl_destroy_device_list(SLstr** devices);
 
 //////////////////////////////////////////////////////////////////////
 ///////////////// Wrapper Function Implementations ///////////////////

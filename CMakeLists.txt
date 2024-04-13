@@ -26,6 +26,7 @@ find_package(OpenAL CONFIG REQUIRED) # comment out if you dont want to try with 
 add_executable(${PROJECT_NAME}
         sal.h
         "test.c"
+        "test2.c"
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenAL::OpenAL) # comment out if you dont want to try with openal
