@@ -2,8 +2,8 @@
  * @file sal.h
  * @author gwerry
  * @brief Simple Audio Library for parsing WAVE files and playing WAVE sounds.
- * @version 3.1.0
- * @date 2024/04/13
+ * @version 3.1.1
+ * @date 2024/04/22
  *
  * Copyright 2024 gwerry
  *
@@ -64,7 +64,7 @@ extern "C" {
 ///////////////// Version of SAL header. ///////////////////
 ////////////////////////////////////////////////////////////
 #ifndef SAL_VERSION
-#define SAL_VERSION "3.1.0"
+#define SAL_VERSION "3.1.1"
 #endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
