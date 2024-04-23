@@ -706,7 +706,7 @@ DLL_EXPORT SL_RETURN_CODE sl_is_wave_file(SLstr path) {
 
     if (wavExtensionLen > path_len && waveExtensionLen > path_len) return SL_FAIL;
 
-    char* toCheck = malloc(sizeof(char) * path_len + 1);
+    char* toCheck = (char*) malloc(sizeof(char) * path_len + 1);
 
     if(toCheck == NULL) return SL_MALLOC_FAIL;
 
