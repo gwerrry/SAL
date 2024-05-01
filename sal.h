@@ -36,14 +36,9 @@ extern "C" {
 #include <sys/stat.h>
 
 #ifdef _WIN32
-
 #include <windows.h>
-#define S_ISREG_CROSS _S_IFREG
-#define CROSS_SYS_STAT _stat
 
 #elif defined(__linux__) || defined(__APPLE__)
-#define S_IS_REG_CROSS S_ISREG
-#define CROSS_SYS_STAT stat
 #include <unistd.h>
 
 #endif  // _WIN32
@@ -191,19 +186,40 @@ DLL_EXPORT_FUNCTION void sl_sleep(float duration) {
  * @param path Path to check.
  * @return SL_SUCESS if provided path is a file. Returns SL_FAIL otherwise.
  */
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_is_file(SLstr path);
+
+
+#ifdef _WIN32
 DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_is_file(SLstr path) {
   if(path == NULL)
     return SL_FAIL;
 
-  struct CROSS_SYS_STAT buf;
-  if(CROSS_SYS_STAT(path, &buf) != 0)
+  struct _stat buf;
+  if(_stat(path, &buf) != 0)
     return SL_FAIL;
 
-  if((buf.st_mode & S_ISREG_CROSS) == 0)
+  if((buf.st_mode & _S_IFMT) != _S_IFREG)
     return SL_FAIL;
 
   return SL_SUCCESS;
 }
+
+#elif defined(__linux__) || defined(__APPLE__)
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_is_file(SLstr path) {
+  if(path == NULL)
+    return SL_FAIL;
+
+  struct stat buf;
+  if(stat(path, &buf) != 0)
+    return SL_FAIL;
+
+  if(!S_ISREG(buf.st_mode))
+    return SL_FAIL;
+
+  return SL_SUCCESS;
+}
+
+#endif // _WIN32
 
 //////////////////////////////////////////////////////////
 ///////////////// Wave File Extensions ///////////////////
