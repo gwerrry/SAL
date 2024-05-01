@@ -332,7 +332,7 @@ DLL_EXPORT static SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufL
  * @param s SLshort to flip.
  * @return SLshort with the endian-ness flipped.
  */
-DLL_EXPORT static SLshort sl_flip_endian_short(SLshort s);
+DLL_EXPORT SLshort sl_flip_endian_short(SLshort s);
 
 /**
  * @brief Flips the endian-ness of a SLint.
