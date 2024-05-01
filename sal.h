@@ -2,8 +2,8 @@
  * @file sal.h
  * @author gwerry
  * @brief Simple Audio Library for parsing WAVE files and playing WAVE sounds.
- * @version 3.1.1
- * @date 2024/04/22
+ * @version 4.0.0
+ * @date 2024/05/01
  *
  * Copyright 2024 gwerry
  *
@@ -26,57 +26,64 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif // __cplusplus
+#endif  // __cplusplus
 
+#include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
-#include <ctype.h>
+#include <sys/stat.h>
 
 #ifdef _WIN32
 
 #include <windows.h>
+#define S_ISREG_CROSS _S_IFREG
+#define CROSS_SYS_STAT _stat
 
 #elif defined(__linux__) || defined(__APPLE__)
-
+#define S_IS_REG_CROSS S_ISREG
+#define CROSS_SYS_STAT stat
 #include <unistd.h>
 
-#endif // _WIN32
+#endif  // _WIN32
 
 /////////////////////////////////////////////////////////////
 ///////////////// Option for DLL linking. ///////////////////
 /////////////////////////////////////////////////////////////
 // #define USE_DLL_LINKING // un-comment this if you want to use DLL linking
 
+#define DLL_EXPORT_FUNCTION static
 #define DLL_EXPORT
 
 #ifdef USE_DLL_LINKING
 
 #ifdef _MSC_VER
-#undef DLL_EXPORT
+#define DLL_EXPORT_FUNCTION __declspec(dllexport)
 #define DLL_EXPORT __declspec(dllexport)
-#endif //_MSC_VER
+#endif  //_MSC_VER
 
-#endif // USE_DLL_LINKING
+#endif  // USE_DLL_LINKING
 
 ////////////////////////////////////////////////////////////
 ///////////////// Version of SAL header. ///////////////////
 ////////////////////////////////////////////////////////////
 #ifndef SAL_VERSION
-#define SAL_VERSION "3.1.1"
+#define SAL_VERSION "4.0.0"
 #endif
 
+// clang-format off
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////// Controls if you want to use the OpenAL wrapper. Comment it out if you don't want to use it. ///////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// clang-format on
 #define SL_OPENAL_WRAPPER
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////// Define some compiler specific things. ///////////////////
 ///////////////////////////////////////////////////////////////////////////
 #ifdef _MSC_VER
-//i know what im doing microsoft pls leave me alone
+// i know what im doing microsoft pls leave me alone
 #pragma warning(disable : 4996)
 #endif
 
@@ -84,48 +91,48 @@ extern "C" {
 ///////////////// Type definitions ///////////////////
 //////////////////////////////////////////////////////
 
-DLL_EXPORT typedef int8_t      SLbool;
-DLL_EXPORT typedef int8_t      SLchar;
-DLL_EXPORT typedef uint8_t     SLuchar;
-DLL_EXPORT typedef int16_t     SLshort;
-DLL_EXPORT typedef uint16_t    SLushort;
-DLL_EXPORT typedef int32_t     SLint;
-DLL_EXPORT typedef uint32_t    SLuint;
-DLL_EXPORT typedef uint64_t    SLullong;
-DLL_EXPORT typedef float       SLfloat;
-DLL_EXPORT typedef double      SLdouble;
+DLL_EXPORT typedef int8_t SLbool;
+DLL_EXPORT typedef int8_t SLchar;
+DLL_EXPORT typedef uint8_t SLuchar;
+DLL_EXPORT typedef int16_t SLshort;
+DLL_EXPORT typedef uint16_t SLushort;
+DLL_EXPORT typedef int32_t SLint;
+DLL_EXPORT typedef uint32_t SLuint;
+DLL_EXPORT typedef uint64_t SLullong;
+DLL_EXPORT typedef float SLfloat;
+DLL_EXPORT typedef double SLdouble;
 DLL_EXPORT typedef const char* SLstr;
-DLL_EXPORT typedef void*       SLvoid;
+DLL_EXPORT typedef void* SLvoid;
 
 ///////////////////////////////////////////////////
 /////////////////  Return Codes ///////////////////
 ///////////////////////////////////////////////////
 
 DLL_EXPORT typedef enum {
-    SL_SUCCESS = 69420,
-    SL_FAIL = 66666,
-    SL_MALLOC_FAIL = 66667,
-    SL_INVALID_VALUE = 61616,
+  SL_SUCCESS = 69420,
+  SL_FAIL = 66666,
+  SL_MALLOC_FAIL = 66667,
+  SL_INVALID_VALUE = 61616,
 
-    SL_FILE_ERROR = 62636,
-    SL_INVALID_WAVE_FORMAT = 63293,
+  SL_FILE_ERROR = 62636,
+  SL_INVALID_WAVE_FORMAT = 63293,
 
-    SL_INVALID_CHUNK_DESCRIPTOR_ID = 10000,
-    SL_INVALID_CHUNK_DESCRIPTOR_SIZE = 11111,
-    SL_INVALID_CHUNK_DESCRIPTOR_FORMAT = 12222,
+  SL_INVALID_CHUNK_DESCRIPTOR_ID = 10000,
+  SL_INVALID_CHUNK_DESCRIPTOR_SIZE = 11111,
+  SL_INVALID_CHUNK_DESCRIPTOR_FORMAT = 12222,
 
-    SL_CHUNK_FORMAT_NOT_FOUND = 20000,
-    SL_INVALID_CHUNK_FMT_SIZE = 23010,
-    SL_INVALID_CHUNK_FMT_AUDIO_FORMAT = 20190,
-    SL_INVALID_CHUNK_FMT_CHANNELS = 21600,
-    SL_INVALID_CHUNK_FMT_SAMPLE_RATE = 25021,
-    SL_INVALID_CHUNK_FMT_BYTE_RATE = 20205,
-    SL_INVALID_CHUNK_FMT_BLOCK_ALIGN = 22008,
-    SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE = 20321,
+  SL_CHUNK_FORMAT_NOT_FOUND = 20000,
+  SL_INVALID_CHUNK_FMT_SIZE = 23010,
+  SL_INVALID_CHUNK_FMT_AUDIO_FORMAT = 20190,
+  SL_INVALID_CHUNK_FMT_CHANNELS = 21600,
+  SL_INVALID_CHUNK_FMT_SAMPLE_RATE = 25021,
+  SL_INVALID_CHUNK_FMT_BYTE_RATE = 20205,
+  SL_INVALID_CHUNK_FMT_BLOCK_ALIGN = 22008,
+  SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE = 20321,
 
-    SL_CHUNK_DATA_NOT_FOUND = 30000,
-    SL_INVALID_CHUNK_DATA_SIZE = 30777,
-    SL_INVALID_CHUNK_DATA_DATA = 30666
+  SL_CHUNK_DATA_NOT_FOUND = 30000,
+  SL_INVALID_CHUNK_DATA_SIZE = 30777,
+  SL_INVALID_CHUNK_DATA_DATA = 30666
 } SL_RETURN_CODE;
 
 /////////////////////////////////////////////////////////////////////
@@ -133,50 +140,92 @@ DLL_EXPORT typedef enum {
 /////////////////////////////////////////////////////////////////////
 
 DLL_EXPORT typedef enum {
-    SL_BIG_ENDIAN = 1,
-    SL_LITTLE_ENDIAN = 0
+  SL_BIG_ENDIAN = 1,
+  SL_LITTLE_ENDIAN = 0
 } SL_ENDIANNESS;
 
-// get native endian-ness of the system
-DLL_EXPORT static SL_ENDIANNESS sl_get_native_endianness() {
-    int n = 1;
-    SL_ENDIANNESS ret = *(char*)&n == 1 ? SL_LITTLE_ENDIAN : SL_BIG_ENDIAN;
+/**
+ * @brief Gets the native endian-ness of the system.
+ *
+ * @return SL_ENDIANNESS endian-ness of the system.
+ */
+DLL_EXPORT_FUNCTION SL_ENDIANNESS sl_get_native_endianness() {
+  int n = 1;
+  SL_ENDIANNESS ret = *(char*) &n == 1 ? SL_LITTLE_ENDIAN : SL_BIG_ENDIAN;
 
-    return ret;
+  return ret;
 }
 
-// get sal version
-DLL_EXPORT static SLstr sl_get_version() {
-    return SAL_VERSION;
+/**
+ * @brief Returns the current version of SAL as an SLstr.
+ *
+ * @return current version of SAL as an SLstr.
+ */
+DLL_EXPORT_FUNCTION SLstr sl_get_version() {
+  return SAL_VERSION;
 }
 
-// sleep function that supports Windows Linux and Macos (macos not tested) // todo test macos stuff eventually...
-DLL_EXPORT static void sl_sleep(float duration) {
-    if (duration < 0) return;
+// todo test macos stuff eventually...
+/**
+ * @brief Sleep function that supports Windows, Linux, and probably macos(not tested).
+ *
+ * @param duration Duration to sleep for
+ */
+DLL_EXPORT_FUNCTION void sl_sleep(float duration) {
+  if(duration < 0)
+    return;
 
-    long milliseconds = (long)(duration * 1000);
+  long milliseconds = (long) (duration * 1000);
 
-    // Sleep for the specified duration
-    #ifdef _WIN32
-        Sleep(milliseconds); // Windows
-    #elif defined(__linux__) || defined(__APPLE__)
-        usleep(milliseconds * 1000); // Linux & MacOS
-    #endif // _WIN32
+// Sleep for the specified duration
+#ifdef _WIN32
+  Sleep(milliseconds);  // Windows
+#elif defined(__linux__) || defined(__APPLE__)
+  usleep(milliseconds * 1000);  // Linux & MacOS
+#endif  // _WIN32
 }
+
+/**
+ * @brief Checks if a provided path is a file.
+ *
+ * @param path Path to check.
+ * @return SL_SUCESS if provided path is a file. Returns SL_FAIL otherwise.
+ */
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_is_file(SLstr path) {
+  if(path == NULL)
+    return SL_FAIL;
+
+  struct CROSS_SYS_STAT buf;
+  if(CROSS_SYS_STAT(path, &buf) != 0)
+    return SL_FAIL;
+
+  if((buf.st_mode & S_ISREG_CROSS) == 0)
+    return SL_FAIL;
+
+  return SL_SUCCESS;
+}
+
+//////////////////////////////////////////////////////////
+///////////////// Wave File Extensions ///////////////////
+//////////////////////////////////////////////////////////
+
+#define WAVE_EXTENSION_SHORT ".wav"
+#define WAVE_EXTENSION_LONG ".wave"
 
 ////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Pcm types ///////////////////
 ////////////////////////////////////////////////////////////////
 
 DLL_EXPORT typedef enum {
-    SL_UNSIGNED_8PCM = 1,
-    SL_SIGNED_16PCM = 2,
-    SL_SIGNED_24PCM = 3,
-    SL_SIGNED_32PCM = 4,
-    SL_FLOAT_32PCM = 5,
-    SL_FLOAT_64PCM = 6
+  SL_UNSIGNED_8PCM = 1,
+  SL_SIGNED_16PCM = 2,
+  SL_SIGNED_24PCM = 3,
+  SL_SIGNED_32PCM = 4,
+  SL_FLOAT_32PCM = 5,
+  SL_FLOAT_64PCM = 6
 } SL_WAVE_PCM_TYPE;
 
+// clang-format off
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////                                                                          The Wave file format                                                                        //////////////
 //////////////                          Thanks to http://soundfile.sapp.org/doc/WaveFormat/ and https://wavefilegem.com/how_wave_files_work.html for this.                          //////////////
@@ -203,6 +252,7 @@ DLL_EXPORT typedef enum {
 //////////////                                                   Little Endian Chunk Suze contains the size of the rest of the chunk.                                               //////////////
 //////////////                                                                          Little Endian Data                                                                          //////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// clang-format on
 
 /////////////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Struct Definitions ///////////////////
@@ -230,7 +280,7 @@ DLL_EXPORT typedef struct sl_wav_data {
     SLuint dataChunkSize;
     SLuint pcmType;
     SLuchar dataId[4];
-    SLvoid  waveformData;
+    SLvoid waveformData;
 } SL_WAV_DATA;
 
 DLL_EXPORT typedef struct sl_wav_file {
@@ -248,549 +298,565 @@ DLL_EXPORT typedef struct sl_wav_file {
  * For more information on types of WAVE files supported, go to the Github.
  * @param path - Path of WAVE file to parse.
  * @param wavBufPtr - Buffer for the WAVE file.
- * @return SL_SUCCESS if succeeded. There are many useful return codes documented on the Github so you can debug anything else that happens.
+ * @return SL_SUCCESS if succeeded. There are many useful return codes
+ * documented on the Github so you can debug anything else that happens.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf);
 
 /**
  * @brief Frees the memory associated with the WAVE file.
  * @param buf - Buffer of WAVE file to free.
  */
-DLL_EXPORT static void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf);
+DLL_EXPORT_FUNCTION void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf);
 
 /**
- * @brief Reads WAVE descriptor chunk. This is a helper function and should not be used except by SAL.
+ * @brief Reads WAVE descriptor chunk. This is a helper function and should not
+ * be used except by SAL.
  * @param file - File ptr to WAVE file.
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
- * @brief Parses WAVE chunks. This is a helper function and should not be used except by SAL.
+ * @brief Parses WAVE chunks. This is a helper function and should not be used
+ * except by SAL.
  * @param file - File ptr to WAVE file.
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
- * @brief Reads WAVE format chunk. This is a helper function and should not be used except by SAL.
+ * @brief Reads WAVE format chunk. This is a helper function and should not be
+ * used except by SAL.
  * @param file - File ptr to WAVE file.
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
- * @brief Reads WAVE data chunk. This is a helper function and should not be used except by SAL.
+ * @brief Reads WAVE data chunk. This is a helper function and should not be
+ * used except by SAL.
  * @param file - File ptr to WAVE file.
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf);
 
 /**
- * @brief Ensures WAVE data ends on a proper byte boundary. This is a helper function and should not be used except by SAL.
+ * @brief Ensures WAVE data ends on a proper byte boundary. This is a helper
+ * function and should not be used except by SAL.
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_validate_wave_data(SL_WAV_FILE* wavBuf);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_validate_wave_data(SL_WAV_FILE* wavBuf);
 
 /**
- * @brief Ensures WAVE data endian-ness is correct. This is a helper function and should not be used except by SAL.
+ * @brief Ensures WAVE data endian-ness is correct. This is a helper function
+ * and should not be used except by SAL.
  * @param wavBuf - Buffer for the WAVE file.
  * @return SL_SUCCESS if it succeeded. Anything else means a failure.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf);
 
 /**
- * @brief This is just for checking if the path provided ends with ".wav" or ".wave".
+ * @brief This is just for checking if the path provided ends with ".wav" or
+ * ".wave".
  * @param str - Path to check.
  * @return SL_SUCCESS the file has the proper wav extension. SL_FAIL otherwise.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_is_wave_file(SLstr path);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_is_wave_file(SLstr path);
 
 /**
- * @brief Converts a SLuchar* buf to a SLushort, but takes into account the system's native endian-ness.
+ * @brief Converts a SLuchar* buf to a SLushort, but takes into account the
+ * system's native endian-ness.
  * @param buf - Buffer to convert. This MUST be at least 2 bytes and valid.
  * @param bufLen - Length of SLuchar buffer to convert.
- * @return The value of the buffer represented as a SLushort taking into account the system's native endian-ness. Returns zero if it fails. I know it's not helpful, but you can debug!
+ * @return The value of the buffer represented as a SLushort taking into account
+ * the system's native endian-ness. Returns zero if it fails. I know it's not
+ * helpful, but you can debug!
  */
-DLL_EXPORT static SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen);
+DLL_EXPORT_FUNCTION SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen);
 
 /**
- * @brief Converts a SLuchar* buf to a SLuint, but takes into account the system's native endian-ness.
+ * @brief Converts a SLuchar* buf to a SLuint, but takes into account the
+ * system's native endian-ness.
  * @param buf - Buffer to convert. This MUST be at least 4 bytes and valid.
  * @param bufLen - Length of SLuchar buffer to convert.
- * @return The value of the buffer represented as a SLuint taking into account the system's native endian-ness. Returns zero if it fails. I know it's not helpful, but you can debug!
+ * @return The value of the buffer represented as a SLuint taking into account
+ * the system's native endian-ness. Returns zero if it fails. I know it's not
+ * helpful, but you can debug!
  */
-DLL_EXPORT static SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen);
+DLL_EXPORT_FUNCTION SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen);
 
 /**
  * @brief Flips the endian-ness of a SLshort.
  * @param s SLshort to flip.
  * @return SLshort with the endian-ness flipped.
  */
-DLL_EXPORT static SLshort sl_flip_endian_short(SLshort s);
+DLL_EXPORT_FUNCTION SLshort sl_flip_endian_short(SLshort s);
 
 /**
  * @brief Flips the endian-ness of a SLint.
  * @param i SLint to flip.
  * @return SLint with the endian-ness flipped.
  */
-DLL_EXPORT static SLint sl_flip_endian_int(SLint i);
+DLL_EXPORT_FUNCTION SLint sl_flip_endian_int(SLint i);
 
 /**
  * @brief Flips the endian-ness of a SLfloat.
  * @param f SLfloat to flip.
  * @return SLfloat with the endian-ness flipped.
  */
-DLL_EXPORT static SLfloat sl_flip_endian_float(SLfloat f);
+DLL_EXPORT_FUNCTION SLfloat sl_flip_endian_float(SLfloat f);
 
 /**
  * @brief Flips the endian-ness of a SLdouble.
  * @param d SLdouble to flip.
  * @return SLdouble with the endian-ness flipped.
  */
-DLL_EXPORT static SLdouble sl_flip_endian_double(SLdouble d);
+DLL_EXPORT_FUNCTION SLdouble sl_flip_endian_double(SLdouble d);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////// Wave File Parser Function Implementations ///////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-DLL_EXPORT SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
-    SL_RETURN_CODE ret = SL_SUCCESS;
-    memset(wavBuf, 0, sizeof(SL_WAV_FILE));
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wavBuf) {
+  SL_RETURN_CODE ret = SL_SUCCESS;
+  memset(wavBuf, 0, sizeof(SL_WAV_FILE));
 
-    FILE* file;
+  FILE* file;
 
-    //ensure pointers are good were just going to assume the user allocated stuff right
-    if (path == NULL) {
-        ret = SL_INVALID_VALUE;
-        goto exit;
-    }
+  // ensure pointers are good were just going to assume the user allocated stuff
+  // right
+  if(path == NULL) {
+    ret = SL_INVALID_VALUE;
+    goto exit;
+  }
 
-    //ensures that this file we are reading is a wave file-or at least ends with it
-    if(sl_is_wave_file(path) == SL_FAIL) {
-        ret = SL_FILE_ERROR;
-        goto exit;
-    }
+  // ensures that this file we are reading is a wave file-or at least ends with
+  // it
+  if(sl_is_wave_file(path) == SL_FAIL) {
+    ret = SL_FILE_ERROR;
+    goto exit;
+  }
 
-    // try to open file
-    file = fopen(path, "rb");
-    if (file == NULL) {
-        ret = SL_FILE_ERROR;
-        goto exit;
-    }
+  // try to open file
+  file = fopen(path, "rb");
+  if(file == NULL) {
+    ret = SL_FILE_ERROR;
+    goto exit;
+  }
 
-    ret = sl_read_wave_descriptor(file, wavBuf);
-    if(ret != SL_SUCCESS) goto bufCleanup;
+  ret = sl_read_wave_descriptor(file, wavBuf);
+  if(ret != SL_SUCCESS)
+    goto bufCleanup;
 
-    ret = sl_parse_wave_chunks(file, wavBuf);
-    if(ret != SL_SUCCESS) goto bufCleanup;
+  ret = sl_parse_wave_chunks(file, wavBuf);
+  if(ret != SL_SUCCESS)
+    goto bufCleanup;
 
-    ret = sl_validate_wave_data(wavBuf);
-    if(ret != SL_SUCCESS) goto bufCleanup;
+  ret = sl_validate_wave_data(wavBuf);
+  if(ret != SL_SUCCESS)
+    goto bufCleanup;
 
-    ret = sl_ensure_wave_endianness(wavBuf);
-    if(ret != SL_SUCCESS) goto bufCleanup;
+  ret = sl_ensure_wave_endianness(wavBuf);
+  if(ret != SL_SUCCESS)
+    goto bufCleanup;
 
-    if (wavBuf->dataChunk.waveformData != NULL) goto fileCleanup;
-    else {
-        ret = SL_FAIL;
-        goto bufCleanup;
-    }
+  if(wavBuf->dataChunk.waveformData != NULL)
+    goto fileCleanup;
+  else {
+    ret = SL_FAIL;
+    goto bufCleanup;
+  }
 
-    bufCleanup:
-        if(wavBuf->dataChunk.waveformData != NULL) free(wavBuf->dataChunk.waveformData);
-            wavBuf->dataChunk.waveformData = NULL;
-    fileCleanup:
-        fclose(file);
-    exit:
+bufCleanup:
+  if(wavBuf->dataChunk.waveformData != NULL)
+    free(wavBuf->dataChunk.waveformData);
+  wavBuf->dataChunk.waveformData = NULL;
+fileCleanup:
+  fclose(file);
+exit:
+  return ret;
+}
+
+DLL_EXPORT_FUNCTION void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf) {
+  if(wavBuf != NULL) {
+    if(wavBuf->dataChunk.waveformData != NULL)
+      free(wavBuf->dataChunk.waveformData);
+    wavBuf->dataChunk.waveformData = NULL;
+  }
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
+  const SLuchar riffID_bytes[4] = {0x52, 0x49, 0x46, 0x46};
+  const SLuchar waveID_bytes[4] = {0x57, 0x41, 0x56, 0x45};
+  SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
+  SLullong blocksRead;
+
+  // read and validate chunkID
+  blocksRead = fread(wavBuf->descriptorChunk.descriptorId, 4, 1, file);
+  if(!blocksRead)
+    return SL_INVALID_CHUNK_DESCRIPTOR_ID;
+
+  if(memcmp(wavBuf->descriptorChunk.descriptorId, riffID_bytes, 4) != 0)
+    return SL_INVALID_CHUNK_DESCRIPTOR_ID;
+
+  // read and validate chunk size
+  blocksRead = fread(buffer4, 4, 1, file);
+  wavBuf->descriptorChunk.descriptorChunkSize = sl_buf_to_native_uint(buffer4, 4);
+  if(!blocksRead || wavBuf->descriptorChunk.descriptorChunkSize == 0)
+    return SL_INVALID_CHUNK_DESCRIPTOR_SIZE;
+
+  // read and validate wave format
+  blocksRead = fread(wavBuf->descriptorChunk.chunkFormat, 4, 1, file);
+  if(!blocksRead || memcmp(wavBuf->descriptorChunk.chunkFormat, waveID_bytes, 4) != 0)
+    return SL_INVALID_CHUNK_DESCRIPTOR_FORMAT;
+
+  return SL_SUCCESS;
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf) {
+  SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
+  const SLuchar fmtID_bytes[4] = {0x66, 0x6d, 0x74, 0x20};
+  const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
+  SLullong blocksRead;
+  SLbool foundFmt = 0;
+  SLbool foundData = 0;
+
+  // Implement the logic for reading the wave descriptor here
+  blocksRead = fread(buffer4, 4, 1, file);
+
+  while(blocksRead) {
+    SLuint foundMatch = 0;
+
+    // check if everything is valid
+    if(feof(file) || ferror(file))
+      return SL_INVALID_WAVE_FORMAT;
+
+    // FORMAT CHUNK
+    if(!foundFmt && memcmp(buffer4, fmtID_bytes, 4) == 0) {
+      foundMatch = 1;
+      foundFmt = 1;
+      // store format id
+      memcpy(wavBuf->formatChunk.fmtId, buffer4, 4);
+
+      SL_RETURN_CODE ret = sl_read_wave_format_chunk(file, wavBuf);
+      if(ret != SL_SUCCESS)
         return ret;
-}
-
-DLL_EXPORT void sl_cleanup_wave_file(SL_WAV_FILE* wavBuf) {
-    if(wavBuf != NULL) {
-        if(wavBuf->dataChunk.waveformData != NULL) free(wavBuf->dataChunk.waveformData);
-        wavBuf->dataChunk.waveformData = NULL;
-    }
-}
-
-DLL_EXPORT SL_RETURN_CODE sl_read_wave_descriptor(FILE* file, SL_WAV_FILE* wavBuf) {
-    const SLuchar riffID_bytes[4] = {0x52, 0x49, 0x46, 0x46};
-    const SLuchar waveID_bytes[4] = {0x57, 0x41, 0x56, 0x45};
-    SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
-    SLullong blocksRead;
-
-    //read and validate chunkID
-    blocksRead = fread(wavBuf->descriptorChunk.descriptorId, 4, 1, file);
-    if (!blocksRead)
-        return SL_INVALID_CHUNK_DESCRIPTOR_ID;
-
-    if (memcmp(wavBuf->descriptorChunk.descriptorId, riffID_bytes, 4) != 0)
-        return SL_INVALID_CHUNK_DESCRIPTOR_ID;
-
-    //read and validate chunk size
-    blocksRead = fread(buffer4, 4, 1, file);
-    wavBuf->descriptorChunk.descriptorChunkSize = sl_buf_to_native_uint(buffer4, 4);
-    if (!blocksRead || wavBuf->descriptorChunk.descriptorChunkSize == 0)
-        return SL_INVALID_CHUNK_DESCRIPTOR_SIZE;
-
-    //read and validate wave format
-    blocksRead = fread(wavBuf->descriptorChunk.chunkFormat, 4, 1, file);
-    if (!blocksRead || memcmp(wavBuf->descriptorChunk.chunkFormat, waveID_bytes, 4) != 0)
-        return SL_INVALID_CHUNK_DESCRIPTOR_FORMAT;
-
-    return SL_SUCCESS;
-}
-
-DLL_EXPORT SL_RETURN_CODE sl_parse_wave_chunks(FILE* file, SL_WAV_FILE* wavBuf) {
-    SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
-    const SLuchar fmtID_bytes [4] = {0x66, 0x6d, 0x74, 0x20};
-    const SLuchar dataID_bytes[4] = {0x64, 0x61, 0x74, 0x61};
-    SLullong blocksRead;
-    SLbool foundFmt = 0;
-    SLbool foundData = 0;
-
-    // Implement the logic for reading the wave descriptor here
-    blocksRead = fread(buffer4, 4, 1, file);
-
-    while(blocksRead) {
-        SLuint foundMatch = 0;
-
-        // check if everything is valid
-        if (feof(file) || ferror(file))
-            return SL_INVALID_WAVE_FORMAT;
-
-        //FORMAT CHUNK
-        if(!foundFmt && memcmp(buffer4, fmtID_bytes, 4) == 0) {
-            foundMatch = 1;
-            foundFmt = 1;
-            //store format id
-            memcpy(wavBuf->formatChunk.fmtId, buffer4, 4);
-
-            SL_RETURN_CODE ret = sl_read_wave_format_chunk(file, wavBuf);
-            if(ret != SL_SUCCESS)
-                return ret;
-        }
-
-        // DATA CHUNK
-        else if(!foundData && memcmp(buffer4, dataID_bytes, 4) == 0) {
-            foundMatch = 1;
-            foundData = 1;
-
-            //store data id
-            memcpy(wavBuf->dataChunk.dataId, buffer4, 4);
-            SL_RETURN_CODE ret = sl_read_wave_data_chunk(file, wavBuf);
-            if(ret != SL_SUCCESS) return ret;
-        }
-
-        if(foundFmt && foundData) break;
-
-        if(foundMatch) {
-            blocksRead = fread(buffer4, 4, 1, file);
-        } else {
-            SLuint size;
-            blocksRead = fread(buffer4, 4, 1, file);
-            if (!blocksRead)
-                return SL_INVALID_WAVE_FORMAT;
-
-            size = sl_buf_to_native_uint(buffer4, 4);
-            if (size == 0)
-                return SL_INVALID_WAVE_FORMAT;
-
-            // skip chunk and read next ID
-            fseek(file, size, SEEK_CUR);
-            blocksRead = fread(buffer4, 4, 1, file);
-        }
     }
 
-    if(!foundFmt)
-        return SL_CHUNK_FORMAT_NOT_FOUND;
-    else if(!foundData)
-        return SL_CHUNK_DATA_NOT_FOUND;
+    // DATA CHUNK
+    else if(!foundData && memcmp(buffer4, dataID_bytes, 4) == 0) {
+      foundMatch = 1;
+      foundData = 1;
 
-    return SL_SUCCESS;
-}
+      // store data id
+      memcpy(wavBuf->dataChunk.dataId, buffer4, 4);
+      SL_RETURN_CODE ret = sl_read_wave_data_chunk(file, wavBuf);
+      if(ret != SL_SUCCESS)
+        return ret;
+    }
 
-DLL_EXPORT SL_RETURN_CODE sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
-    SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
-    SLuchar buffer2[2] = {0x00, 0x00};
-    SLullong blocksRead;
+    if(foundFmt && foundData)
+      break;
 
-    //read and validate fmt chunk size
-    blocksRead = fread(buffer4, 4, 1, file);
-    wavBuf->formatChunk.fmtChunkSize = sl_buf_to_native_uint(buffer4, 4);
-    if (!blocksRead || wavBuf->formatChunk.fmtChunkSize == 0)
-        return SL_INVALID_CHUNK_FMT_SIZE;
-
-    //read only. audio format is verified later when parsing bits per sample
-    blocksRead = fread(buffer2, 2, 1, file);
-    if (!blocksRead)
-        return SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
-    wavBuf->formatChunk.audioFormat = sl_buf_to_native_ushort(buffer2, 2);
-
-    //read and validate num channels.
-    blocksRead = fread(buffer2, 2, 1, file);
-    wavBuf->formatChunk.numChannels = sl_buf_to_native_ushort(buffer2, 2);
-    if (!blocksRead || wavBuf->formatChunk.numChannels == 0)
-        return SL_INVALID_CHUNK_FMT_CHANNELS;
-
-
-    //read and validate sample rate
-    blocksRead = fread(buffer4, 4, 1, file);
-    wavBuf->formatChunk.sampleRate = sl_buf_to_native_uint(buffer4, 4);
-    if (!blocksRead || wavBuf->formatChunk.sampleRate == 0)
-        return SL_INVALID_CHUNK_FMT_SAMPLE_RATE;
-
-
-    //read and validate byte rate
-    blocksRead = fread(buffer4, 4, 1, file);
-    wavBuf->formatChunk.byteRate = sl_buf_to_native_uint(buffer4, 4);
-    if (!blocksRead || wavBuf->formatChunk.byteRate == 0)
-        return SL_INVALID_CHUNK_FMT_BYTE_RATE;
-
-    //read and validate block align
-    blocksRead = fread(buffer2, 2, 1, file);
-    wavBuf->formatChunk.blockAlign = sl_buf_to_native_ushort(buffer2, 2);
-    if (!blocksRead || wavBuf->formatChunk.blockAlign == 0)
-        return SL_INVALID_CHUNK_FMT_BLOCK_ALIGN;
-
-    //read and validate bits per sample
-    blocksRead = fread(buffer2, 2, 1, file);
-    if (!blocksRead)
-        return SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
-
-    wavBuf->formatChunk.bitsPerSample = sl_buf_to_native_ushort(buffer2, 2);
-
-    if(wavBuf->formatChunk.audioFormat == 1) {
-        switch (wavBuf->formatChunk.bitsPerSample) {
-            case 8: {
-                wavBuf->dataChunk.pcmType = SL_UNSIGNED_8PCM;
-                break;
-            }
-            case 16: {
-                wavBuf->dataChunk.pcmType = SL_SIGNED_16PCM;
-                break;
-            }
-            case 24: {
-                wavBuf->dataChunk.pcmType = SL_SIGNED_24PCM;
-                break;
-            }
-            case 32: {
-                wavBuf->dataChunk.pcmType = SL_SIGNED_32PCM;
-                break;
-            }
-            default: break;
-        }
-    } else if (wavBuf->formatChunk.audioFormat == 3) {
-        switch (wavBuf->formatChunk.bitsPerSample) {
-            case 32: {
-                wavBuf->dataChunk.pcmType = SL_FLOAT_32PCM;
-                break;
-            }
-            case 64: {
-                wavBuf->dataChunk.pcmType = SL_FLOAT_64PCM;
-                break;
-            }
-            default: break;
-        }
+    if(foundMatch) {
+      blocksRead = fread(buffer4, 4, 1, file);
     } else {
-        return SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
+      SLuint size;
+      blocksRead = fread(buffer4, 4, 1, file);
+      if(!blocksRead)
+        return SL_INVALID_WAVE_FORMAT;
+
+      size = sl_buf_to_native_uint(buffer4, 4);
+      if(size == 0)
+        return SL_INVALID_WAVE_FORMAT;
+
+      // skip chunk and read next ID
+      fseek(file, size, SEEK_CUR);
+      blocksRead = fread(buffer4, 4, 1, file);
     }
+  }
 
-    if (wavBuf->dataChunk.pcmType == 0)
-        return SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
+  if(!foundFmt)
+    return SL_CHUNK_FORMAT_NOT_FOUND;
+  else if(!foundData)
+    return SL_CHUNK_DATA_NOT_FOUND;
 
-    return SL_SUCCESS;
+  return SL_SUCCESS;
 }
 
-DLL_EXPORT SL_RETURN_CODE sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
-    SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
-    SLullong blocksRead;
-    //read data chunk size
-    blocksRead = fread(buffer4, 4, 1, file);
-    wavBuf->dataChunk.dataChunkSize = sl_buf_to_native_uint(buffer4, 4);
-    if (!blocksRead || wavBuf->dataChunk.dataChunkSize == 0)
-        return SL_INVALID_CHUNK_DATA_SIZE;
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_read_wave_format_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
+  SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
+  SLuchar buffer2[2] = {0x00, 0x00};
+  SLullong blocksRead;
 
-    wavBuf->dataChunk.waveformData = malloc(wavBuf->dataChunk.dataChunkSize);
-    if (wavBuf->dataChunk.waveformData == NULL)
-        return SL_MALLOC_FAIL;
+  // read and validate fmt chunk size
+  blocksRead = fread(buffer4, 4, 1, file);
+  wavBuf->formatChunk.fmtChunkSize = sl_buf_to_native_uint(buffer4, 4);
+  if(!blocksRead || wavBuf->formatChunk.fmtChunkSize == 0)
+    return SL_INVALID_CHUNK_FMT_SIZE;
 
-    // Ensure the buffer size is even
-    blocksRead = fread(wavBuf->dataChunk.waveformData, wavBuf->dataChunk.dataChunkSize, 1, file);
-    if (!blocksRead)
+  // read only. audio format is verified later when parsing bits per sample
+  blocksRead = fread(buffer2, 2, 1, file);
+  if(!blocksRead)
+    return SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
+  wavBuf->formatChunk.audioFormat = sl_buf_to_native_ushort(buffer2, 2);
+
+  // read and validate num channels.
+  blocksRead = fread(buffer2, 2, 1, file);
+  wavBuf->formatChunk.numChannels = sl_buf_to_native_ushort(buffer2, 2);
+  if(!blocksRead || wavBuf->formatChunk.numChannels == 0)
+    return SL_INVALID_CHUNK_FMT_CHANNELS;
+
+  // read and validate sample rate
+  blocksRead = fread(buffer4, 4, 1, file);
+  wavBuf->formatChunk.sampleRate = sl_buf_to_native_uint(buffer4, 4);
+  if(!blocksRead || wavBuf->formatChunk.sampleRate == 0)
+    return SL_INVALID_CHUNK_FMT_SAMPLE_RATE;
+
+  // read and validate byte rate
+  blocksRead = fread(buffer4, 4, 1, file);
+  wavBuf->formatChunk.byteRate = sl_buf_to_native_uint(buffer4, 4);
+  if(!blocksRead || wavBuf->formatChunk.byteRate == 0)
+    return SL_INVALID_CHUNK_FMT_BYTE_RATE;
+
+  // read and validate block align
+  blocksRead = fread(buffer2, 2, 1, file);
+  wavBuf->formatChunk.blockAlign = sl_buf_to_native_ushort(buffer2, 2);
+  if(!blocksRead || wavBuf->formatChunk.blockAlign == 0)
+    return SL_INVALID_CHUNK_FMT_BLOCK_ALIGN;
+
+  // read and validate bits per sample
+  blocksRead = fread(buffer2, 2, 1, file);
+  if(!blocksRead)
+    return SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
+
+  wavBuf->formatChunk.bitsPerSample = sl_buf_to_native_ushort(buffer2, 2);
+
+  if(wavBuf->formatChunk.audioFormat == 1) {
+    switch(wavBuf->formatChunk.bitsPerSample) {
+      case 8 : {
+        wavBuf->dataChunk.pcmType = SL_UNSIGNED_8PCM;
+        break;
+      }
+      case 16 : {
+        wavBuf->dataChunk.pcmType = SL_SIGNED_16PCM;
+        break;
+      }
+      case 24 : {
+        wavBuf->dataChunk.pcmType = SL_SIGNED_24PCM;
+        break;
+      }
+      case 32 : {
+        wavBuf->dataChunk.pcmType = SL_SIGNED_32PCM;
+        break;
+      }
+      default : break;
+    }
+  } else if(wavBuf->formatChunk.audioFormat == 3) {
+    switch(wavBuf->formatChunk.bitsPerSample) {
+      case 32 : {
+        wavBuf->dataChunk.pcmType = SL_FLOAT_32PCM;
+        break;
+      }
+      case 64 : {
+        wavBuf->dataChunk.pcmType = SL_FLOAT_64PCM;
+        break;
+      }
+      default : break;
+    }
+  } else {
+    return SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
+  }
+
+  if(wavBuf->dataChunk.pcmType == 0)
+    return SL_INVALID_CHUNK_FMT_BITS_PER_SAMPLE;
+
+  return SL_SUCCESS;
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_read_wave_data_chunk(FILE* file, SL_WAV_FILE* wavBuf) {
+  SLuchar buffer4[4] = {0x00, 0x00, 0x00, 0x00};
+  SLullong blocksRead;
+  // read data chunk size
+  blocksRead = fread(buffer4, 4, 1, file);
+  wavBuf->dataChunk.dataChunkSize = sl_buf_to_native_uint(buffer4, 4);
+  if(!blocksRead || wavBuf->dataChunk.dataChunkSize == 0)
+    return SL_INVALID_CHUNK_DATA_SIZE;
+
+  wavBuf->dataChunk.waveformData = malloc(wavBuf->dataChunk.dataChunkSize);
+  if(wavBuf->dataChunk.waveformData == NULL)
+    return SL_MALLOC_FAIL;
+
+  // Ensure the buffer size is even
+  blocksRead = fread(wavBuf->dataChunk.waveformData, wavBuf->dataChunk.dataChunkSize, 1, file);
+  if(!blocksRead)
+    return SL_INVALID_CHUNK_DATA_DATA;
+
+  return SL_SUCCESS;
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
+  switch(wavBuf->dataChunk.pcmType) {
+    case SL_UNSIGNED_8PCM :
+    case SL_SIGNED_16PCM :
+    case SL_SIGNED_32PCM :
+    case SL_FLOAT_32PCM :
+    case SL_FLOAT_64PCM :
+      if(wavBuf->dataChunk.dataChunkSize % 2 != 0)
         return SL_INVALID_CHUNK_DATA_DATA;
-
-    return SL_SUCCESS;
+      break;
+    case SL_SIGNED_24PCM :
+      if(wavBuf->dataChunk.dataChunkSize % 3 != 0)
+        return SL_INVALID_CHUNK_DATA_DATA;
+      break;
+    default : return SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
+  }
+  return SL_SUCCESS;
 }
 
-DLL_EXPORT SL_RETURN_CODE sl_validate_wave_data(SL_WAV_FILE* wavBuf) {
-    switch (wavBuf->dataChunk.pcmType) {
-        case SL_UNSIGNED_8PCM:
-        case SL_SIGNED_16PCM:
-        case SL_SIGNED_32PCM:
-        case SL_FLOAT_32PCM:
-        case SL_FLOAT_64PCM:
-            if (wavBuf->dataChunk.dataChunkSize % 2 != 0) return SL_INVALID_CHUNK_DATA_DATA;
-            break;
-        case SL_SIGNED_24PCM:
-            if (wavBuf->dataChunk.dataChunkSize % 3 != 0) return SL_INVALID_CHUNK_DATA_DATA;
-            break;
-        default:
-            return SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
-    }
-    return SL_SUCCESS;
-}
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
+  volatile SLbool endianness = sl_get_native_endianness();
+  if(endianness != SL_LITTLE_ENDIAN) {
+    switch(wavBuf->dataChunk.pcmType) {
+      case SL_UNSIGNED_8PCM : break;
+      case SL_SIGNED_16PCM :  {
+        SLshort* data = (SLshort*) wavBuf->dataChunk.waveformData;
+        SLullong len = wavBuf->dataChunk.dataChunkSize / 2;
+        for(SLullong i = 0; i < len; ++i) data[i] = sl_flip_endian_short(data[i]);
 
-DLL_EXPORT SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf) {
-    volatile SLbool endianness = sl_get_native_endianness();
-    if(endianness != SL_LITTLE_ENDIAN) {
-        switch (wavBuf->dataChunk.pcmType) {
-            case SL_UNSIGNED_8PCM:
-                break;
-            case SL_SIGNED_16PCM: {
-                SLshort* data = (SLshort*) wavBuf->dataChunk.waveformData;
-                SLullong len = wavBuf->dataChunk.dataChunkSize / 2;
-                for(SLullong i = 0; i < len; ++i) data[i] = sl_flip_endian_short(data[i]);
-
-                break;
-            }
-            case SL_SIGNED_24PCM: {
-                SLchar* data = (SLchar*) wavBuf->dataChunk.waveformData;
-                SLullong len = wavBuf->dataChunk.dataChunkSize / 3;
-                for(SLullong i = 0; i < len; ++i) {
-                    SLchar temp = data[i*3];
-                    data[i*3] = data[i*3+2];
-                    data[i*3+2] = temp;
-                }
-                break;
-            }
-            case SL_SIGNED_32PCM: {
-                SLint* data = (SLint*) wavBuf->dataChunk.waveformData;
-                SLullong len = wavBuf->dataChunk.dataChunkSize / 4;
-                for(SLullong i = 0; i < len; ++i) data[i] = sl_flip_endian_int(data[i]);
-
-                break;
-            }
-            case SL_FLOAT_32PCM: {
-                SLfloat* data = (SLfloat*) wavBuf->dataChunk.waveformData;
-                SLullong len = wavBuf->dataChunk.dataChunkSize / 4;
-                for(SLullong i = 0; i < len; ++i) data[i] = sl_flip_endian_float(data[i]);
-
-                break;
-            }
-            case SL_FLOAT_64PCM: {
-                SLdouble* data = (SLdouble*) wavBuf->dataChunk.waveformData;
-                SLullong len = wavBuf->dataChunk.dataChunkSize / 8;
-                for(SLullong i = 0; i < len; ++i)     data[i] = sl_flip_endian_double(data[i]);
-
-                break;
-            }
-            default:
-                return SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
+        break;
+      }
+      case SL_SIGNED_24PCM : {
+        SLchar* data = (SLchar*) wavBuf->dataChunk.waveformData;
+        SLullong len = wavBuf->dataChunk.dataChunkSize / 3;
+        for(SLullong i = 0; i < len; ++i) {
+          SLchar temp = data[i * 3];
+          data[i * 3] = data[i * 3 + 2];
+          data[i * 3 + 2] = temp;
         }
+        break;
+      }
+      case SL_SIGNED_32PCM : {
+        SLint* data = (SLint*) wavBuf->dataChunk.waveformData;
+        SLullong len = wavBuf->dataChunk.dataChunkSize / 4;
+        for(SLullong i = 0; i < len; ++i) data[i] = sl_flip_endian_int(data[i]);
+
+        break;
+      }
+      case SL_FLOAT_32PCM : {
+        SLfloat* data = (SLfloat*) wavBuf->dataChunk.waveformData;
+        SLullong len = wavBuf->dataChunk.dataChunkSize / 4;
+        for(SLullong i = 0; i < len; ++i) data[i] = sl_flip_endian_float(data[i]);
+
+        break;
+      }
+      case SL_FLOAT_64PCM : {
+        SLdouble* data = (SLdouble*) wavBuf->dataChunk.waveformData;
+        SLullong len = wavBuf->dataChunk.dataChunkSize / 8;
+        for(SLullong i = 0; i < len; ++i) data[i] = sl_flip_endian_double(data[i]);
+
+        break;
+      }
+      default : return SL_INVALID_CHUNK_FMT_AUDIO_FORMAT;
     }
-    return SL_SUCCESS;
+  }
+  return SL_SUCCESS;
 }
 
-DLL_EXPORT SL_RETURN_CODE sl_is_wave_file(SLstr path) {
-    SLstr wavExtension = ".wav";
-    SLstr waveExtension = ".wave";
-    SLullong path_len = strlen(path);
-    SLullong wavExtensionLen = strlen(wavExtension);
-    SLullong waveExtensionLen = strlen(waveExtension);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_is_wave_file(SLstr path) {
+  if(!sl_is_file(path))
+    return SL_FAIL;
 
-    if (wavExtensionLen > path_len && waveExtensionLen > path_len) return SL_FAIL;
+  SLullong path_len = strlen(path);
+  SLullong wavExtensionLen = strlen(WAVE_EXTENSION_SHORT);
+  SLullong waveExtensionLen = strlen(WAVE_EXTENSION_LONG);
 
-    char* toCheck = (char*) malloc(sizeof(char) * path_len + 1);
+  if(wavExtensionLen > path_len && waveExtensionLen > path_len)
+    return SL_FAIL;
 
-    if(toCheck == NULL) return SL_MALLOC_FAIL;
+  char* toCheck = (char*) malloc((sizeof(char) * (size_t) path_len) + 1);
 
-    strcpy(toCheck, path);
+  if(toCheck == NULL)
+    return SL_MALLOC_FAIL;
 
-    for (int i = path_len-1; i >= 0; i--) {
-        if(toCheck[i] == '.') break;
-        toCheck[i] = tolower(toCheck[i]);
-    }
+  strcpy(toCheck, path);
 
-    SL_RETURN_CODE res = (strcmp(wavExtension, toCheck + path_len - wavExtensionLen) == 0 ||
-                  strcmp(waveExtension, toCheck + path_len - waveExtensionLen) == 0)
-                 ? SL_SUCCESS
-                 : SL_FAIL;
+  for(SLullong i = path_len - 1; i >= 0; i--) {
+    if(toCheck[i] == '.')
+      break;
+    toCheck[i] = tolower(toCheck[i]);
+  }
 
-    free(toCheck);
-    return res;
+  SL_RETURN_CODE res = (strcmp(WAVE_EXTENSION_SHORT, toCheck + path_len - wavExtensionLen) == 0 || strcmp(WAVE_EXTENSION_LONG, toCheck + path_len - waveExtensionLen) == 0) ? SL_SUCCESS : SL_FAIL;
+
+  free(toCheck);
+  return res;
 }
 
-DLL_EXPORT SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen) {
-    //who needs comments, am i right?
-    if(buf == NULL || bufLen < 2) return 0;
+DLL_EXPORT_FUNCTION SLushort sl_buf_to_native_ushort(const SLuchar* buf, SLullong bufLen) {
+  // who needs comments, am i right?
+  if(buf == NULL || bufLen < 2)
+    return 0;
 
-    SLuint value;
-    volatile SLbool endianness = sl_get_native_endianness();
-    if(endianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8);
-    else value = buf[1] | (buf[0] << 8);
+  SLuint value;
+  volatile SLbool endianness = sl_get_native_endianness();
+  if(endianness == SL_LITTLE_ENDIAN)
+    value = buf[0] | (buf[1] << 8);
+  else
+    value = buf[1] | (buf[0] << 8);
 
-    return value;
+  return value;
 }
 
-DLL_EXPORT SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen) {
-    if(buf == NULL || bufLen < 4) return 0;
+DLL_EXPORT_FUNCTION SLuint sl_buf_to_native_uint(const SLuchar* buf, SLullong bufLen) {
+  if(buf == NULL || bufLen < 4)
+    return 0;
 
-    SLuint value;
-    volatile SLbool endianness = sl_get_native_endianness();
-    if(endianness == SL_LITTLE_ENDIAN) value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
-    else value = buf[3] | (buf[2] << 8) | (buf[1] << 16) | (buf[0] << 24);
+  SLuint value;
+  volatile SLbool endianness = sl_get_native_endianness();
+  if(endianness == SL_LITTLE_ENDIAN)
+    value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
+  else
+    value = buf[3] | (buf[2] << 8) | (buf[1] << 16) | (buf[0] << 24);
 
-    return value;
+  return value;
 }
 
-DLL_EXPORT SLshort sl_flip_endian_short(SLshort s) {
-    return (s >> 8) | (s << 8);
+DLL_EXPORT_FUNCTION SLshort sl_flip_endian_short(SLshort s) {
+  return (s >> 8) | (s << 8);
 }
 
-DLL_EXPORT SLint sl_flip_endian_int(SLint i) {
-    return ((i >> 24) & 0xff) |
-           ((i << 8) & 0xff0000) |
-           ((i >> 8) & 0xff00) |
-           ((i << 24) & 0xff000000);
+DLL_EXPORT_FUNCTION SLint sl_flip_endian_int(SLint i) {
+  return ((i >> 24) & 0xff) | ((i << 8) & 0xff0000) | ((i >> 8) & 0xff00) | ((i << 24) & 0xff000000);
 }
 
-DLL_EXPORT SLfloat sl_flip_endian_float(SLfloat f) {
-    // i love c because of this right here
-    unsigned long num_int;
-    memcpy(&num_int, &f, sizeof(float));
+DLL_EXPORT_FUNCTION SLfloat sl_flip_endian_float(SLfloat f) {
+  // i love c because of this right here
+  unsigned long num_int;
+  memcpy(&num_int, &f, sizeof(float));
 
-    unsigned long swapped_int = ((num_int >> 24) & 0xff) |
-                                ((num_int << 8) & 0xff0000) |
-                                ((num_int >> 8) & 0xff00) |
-                                ((num_int << 24) & 0xff000000);
-    float swapped;
-    memcpy(&swapped, &swapped_int, sizeof(float));
-    return swapped;
+  unsigned long swapped_int = ((num_int >> 24) & 0xff) | ((num_int << 8) & 0xff0000) | ((num_int >> 8) & 0xff00) | ((num_int << 24) & 0xff000000);
+  float swapped;
+  memcpy(&swapped, &swapped_int, sizeof(float));
+  return swapped;
 }
 
-DLL_EXPORT SLdouble sl_flip_endian_double(SLdouble d) {
-    // i love c because of this right here
-    uint64_t num_int;
-    memcpy(&num_int, &d, sizeof(double));
+DLL_EXPORT_FUNCTION SLdouble sl_flip_endian_double(SLdouble d) {
+  // i love c because of this right here
+  uint64_t num_int;
+  memcpy(&num_int, &d, sizeof(double));
 
-    uint64_t swapped_int = ((num_int >> 56) & 0x00000000000000ff) |
-                           ((num_int >> 40) & 0x000000000000ff00) |
-                           ((num_int >> 24) & 0x0000000000ff0000) |
-                           ((num_int >> 8)  & 0x00000000ff000000) |
-                           ((num_int << 8)  & 0x000000ff00000000) |
-                           ((num_int << 24) & 0x0000ff0000000000) |
-                           ((num_int << 40) & 0x00ff000000000000) |
-                           ((num_int << 56) & 0xff00000000000000);
+  uint64_t swapped_int = ((num_int >> 56) & 0x00000000000000ff) | ((num_int >> 40) & 0x000000000000ff00) | ((num_int >> 24) & 0x0000000000ff0000) | ((num_int >> 8) & 0x00000000ff000000) | ((num_int << 8) & 0x000000ff00000000) | ((num_int << 24) & 0x0000ff0000000000) | ((num_int << 40) & 0x00ff000000000000) | ((num_int << 56) & 0xff00000000000000);
 
-    double swapped;
-    memcpy(&swapped, &swapped_int, sizeof(double));
-    return swapped;
+  double swapped;
+  memcpy(&swapped, &swapped_int, sizeof(double));
+  return swapped;
 }
 
 ////////////////////////////////////////////////////
@@ -818,8 +884,8 @@ DLL_EXPORT typedef struct sl_sound {
     ALsizei freq;
     ALenum format;
     ALfloat duration;
-    ALfloat pitch; // in % so 1.0 is 100%, 0.5 is 50% and so on.
-    ALfloat gain; // in % so 1.0 is 100%, 0.5 is 50% and so on.
+    ALfloat pitch;  // in % so 1.0 is 100%, 0.5 is 50% and so on.
+    ALfloat gain;   // in % so 1.0 is 100%, 0.5 is 50% and so on.
 } SL_SOUND;
 
 //////////////////////////////////////////////////////////////////
@@ -832,7 +898,7 @@ DLL_EXPORT typedef struct sl_sound {
  * @param device - Device to play sound to.
  * @return SL_SUCCESS if succeeded. SL_FAIL otherwise.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device);
 
 /**
  * @brief Lower level way of playing a sound.
@@ -841,25 +907,28 @@ DLL_EXPORT static SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device);
  * @param sound - Sound to play.
  * @return SL_SUCCESS if succeeded. SL_FAIL otherwise.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_play_sound_b(SL_SOUND* sound);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_play_sound_b(SL_SOUND* sound);
 
 /**
  * @brief Plays sound in highest level way.
- * This function parses the WAVE file at the specified path, generates a SL_SOUND, plays the sound, and frees the memory for you.
+ * This function parses the WAVE file at the specified path, generates a
+ * SL_SOUND, plays the sound, and frees the memory for you.
  * @param path - Path of WAVE file to parse and play.
  * @param device - Device to play the audio to.
- * @param gain - Control the volume of the sound. (1.f is 100%, 0.5 is 50% and so on)
- * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50% and so on)
+ * @param gain - Control the volume of the sound. (1.f is 100%, 0.5 is 50% and
+ * so on)
+ * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50%
+ * and so on)
  * @return SL_SUCCESS if succeeded. SL_FAIL otherwise.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch);
 
 /**
  * @brief Parses sound format for specified sound.
  * @param sound - Sound to parse sound format for.
  * @return SL_SUCCESS if proeprly parsed. SL_FAIL otherwise.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_parse_sound_format(SL_SOUND* sound);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_sound_format(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to mono (1 channel) for specified sound.
@@ -867,7 +936,7 @@ DLL_EXPORT static SL_RETURN_CODE sl_parse_sound_format(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_parse_mono(SL_SOUND* sound);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_mono(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to stereo (2 channels) for specified sound.
@@ -875,7 +944,7 @@ DLL_EXPORT static SL_RETURN_CODE sl_parse_mono(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_parse_stereo(SL_SOUND* sound);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_stereo(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to QUAD (4 channels) for specified sound.
@@ -883,7 +952,7 @@ DLL_EXPORT static SL_RETURN_CODE sl_parse_stereo(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_parse_quad(SL_SOUND* sound);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_quad(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to 5.1 (6 channels) for specified sound.
@@ -891,7 +960,7 @@ DLL_EXPORT static SL_RETURN_CODE sl_parse_quad(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_parse_51(SL_SOUND* sound);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_51(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to 6.1 (7 channels) for specified sound.
@@ -899,7 +968,7 @@ DLL_EXPORT static SL_RETURN_CODE sl_parse_51(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_parse_61(SL_SOUND* sound);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_61(SL_SOUND* sound);
 
 /**
  * @brief Parses PCM type of sound to 7.1 (8 channels) for specified sound.
@@ -907,419 +976,423 @@ DLL_EXPORT static SL_RETURN_CODE sl_parse_61(SL_SOUND* sound);
  * @param sound - Sound to parse PCM type for.
  * @return SL_SUCCESS if parsed correctly. SL_FAIL otherwise.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_parse_71(SL_SOUND* sound);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_71(SL_SOUND* sound);
 
 /**
- * @brief Stops the sound if it is currently playing and cleans up OpenAL related things.
- * This does not free any other sound things. It simply stops the sound and cleans up OpenAL stuff.
+ * @brief Stops the sound if it is currently playing and cleans up OpenAL
+ * related things. This does not free any other sound things. It simply stops
+ * the sound and cleans up OpenAL stuff.
  * @param sound - Sound to stop.
  */
-DLL_EXPORT static void sl_stop_sound(SL_SOUND* sound);
+DLL_EXPORT_FUNCTION void sl_stop_sound(SL_SOUND* sound);
 
 /**
  * @brief Cleans up the sound.
  * Make sure to call this if you are doing things manually.
  * @param sound - Sound to clean up.
  */
-DLL_EXPORT static void sl_cleanup_sound(SL_SOUND* sound);
+DLL_EXPORT_FUNCTION void sl_cleanup_sound(SL_SOUND* sound);
 
 /**
- * @brief Generates a SL_SOUND from the provided parameters and stores it in the provided buffer.
+ * @brief Generates a SL_SOUND from the provided parameters and stores it in the
+ * provided buffer.
  * @param sound - Buffer for the sound.
  * @param waveBuf - WAVE buffer for the sound.
- * @param gain - Control the volume of the sound. (1.f is 100%, 0.5 is 50% and so on)
- * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50% and so on)
- * @return SL_SUCCESS if everything went right. Anything else means something happened.
+ * @param gain - Control the volume of the sound. (1.f is 100%, 0.5 is 50% and
+ * so on)
+ * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50%
+ * and so on)
+ * @return SL_SUCCESS if everything went right. Anything else means something
+ * happened.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch);
 
 /**
- * @brief Generates a SL_SOUND from the provided parameters and stores it in the provided buffer.
+ * @brief Generates a SL_SOUND from the provided parameters and stores it in the
+ * provided buffer.
  * @param sound - Buffer for the sound.
  * @param path - Path to the sound. Sound MUST be a WAVE file.
- * @param gain - Control the volume of the sound. (1.f is 100%, 0.5 is 50% and so on)
- * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50% and so on)
- * @return SL_SUCCESS if everything went right. Anything else means something happened.
+ * @param gain - Control the volume of the sound. (1.f is 100%, 0.5 is 50% and
+ * so on)
+ * @param pitch - Control the speed/pitch of the sound. (1.f is 100%, 0.5 is 50%
+ * and so on)
+ * @return SL_SUCCESS if everything went right. Anything else means something
+ * happened.
  */
-DLL_EXPORT static SL_RETURN_CODE sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch);
 
 /**
  * @brief Returns an array of audio devices.
  * @return SLstr* array of audio devices.
  */
-DLL_EXPORT static SLstr* sl_get_devices(void);
+DLL_EXPORT_FUNCTION SLstr* sl_get_devices(void);
 
 /**
  * @brief Frees the device list that is returned by sl_get_devices(void).
  * Must be called on the device list that was returned to free it.
  * @param devices - Device list to free.
  */
-DLL_EXPORT static void sl_destroy_device_list(SLstr** devices);
+DLL_EXPORT_FUNCTION void sl_destroy_device_list(SLstr** devices);
 
 //////////////////////////////////////////////////////////////////////
 ///////////////// Wrapper Function Implementations ///////////////////
 //////////////////////////////////////////////////////////////////////
 
-DLL_EXPORT SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device) {
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_play_sound(SL_SOUND* sound, SLstr device) {
+  if(sound == NULL)
+    return SL_FAIL;
+  // Initialize OpenAL
+  sound->device = alcOpenDevice(device);
+  sound->context = alcCreateContext(sound->device, NULL);
+  alcMakeContextCurrent(sound->context);
 
-    if(sound == NULL) return SL_FAIL;
-    // Initialize OpenAL
-    sound->device = alcOpenDevice(device);
-    sound->context = alcCreateContext(sound->device, NULL);
-    alcMakeContextCurrent(sound->context);
+  // Generate a buffer
+  alGenBuffers(1, &sound->buffer);
 
-    // Generate a buffer
-    alGenBuffers(1, &sound->buffer);
+  // Buffer stuff to data
+  alBufferData(sound->buffer, sound->format, sound->waveBuf->dataChunk.waveformData, sound->size, sound->freq);
 
-    //Buffer stuff to data
-    alBufferData(sound->buffer, sound->format, sound->waveBuf->dataChunk.waveformData, sound->size, sound->freq);
+  // Generate a source
+  if(sound->source)
+    alDeleteSources(1, &sound->source);
+  alGenSources(1, &sound->source);
 
-    // Generate a source
-    if (sound->source) alDeleteSources(1, &sound->source);
-    alGenSources(1, &sound->source);
+  // Set the pitch
+  alSourcef(sound->source, AL_PITCH, sound->pitch);
 
-    // Set the pitch
-    alSourcef(sound->source, AL_PITCH, sound->pitch);
+  // Set the gain
+  alSourcef(sound->source, AL_GAIN, sound->gain);
 
-    // Set the gain
-    alSourcef(sound->source, AL_GAIN, sound->gain);
+  // Queue the buffer for playback
+  alSourceQueueBuffers(sound->source, 1, &sound->buffer);
 
+  // Start playback
+  alSourcePlay(sound->source);
 
-    // Queue the buffer for playback
-    alSourceQueueBuffers(sound->source, 1, &sound->buffer);
+  // Wait for playback to finish
+  sl_sleep(sound->duration);
 
-    // Start playback
-    alSourcePlay(sound->source);
+  // ensure it's done playing
+  ALint state;
+  do { alGetSourcei(sound->source, AL_SOURCE_STATE, &state); } while(state == AL_PLAYING);
 
-    // Wait for playback to finish
-    sl_sleep(sound->duration);
+  // cleanup
+  sl_stop_sound(sound);
 
-    //ensure it's done playing
-    ALint state;
-    do {
-        alGetSourcei(sound->source, AL_SOURCE_STATE, &state);
-    } while (state == AL_PLAYING);
+  return SL_SUCCESS;
+}
 
-    // cleanup
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_play_sound_b(SL_SOUND* sound) {
+  return sl_play_sound(sound, NULL);
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch) {
+  SL_SOUND sound;
+  SL_WAV_FILE buf;
+  SL_RETURN_CODE out = sl_read_wave_file(path, &buf);
+
+  if(out != SL_SUCCESS)
+    return out;
+
+  out = sl_gen_sound_a(&sound, &buf, gain, pitch);
+
+  if(out != SL_SUCCESS) {
+    sl_cleanup_wave_file(&buf);
+    return out;
+  }
+
+  out = sl_play_sound(&sound, device);
+
+  sl_cleanup_sound(&sound);
+
+  return out;
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_sound_format(SL_SOUND* sound) {
+  SL_RETURN_CODE ret;
+
+  switch(sound->waveBuf->formatChunk.numChannels) {
+    case 1 : {
+      ret = sl_parse_mono(sound);
+      break;
+    }
+    case 2 : {
+      ret = sl_parse_stereo(sound);
+      break;
+    }
+    case 4 : {
+      ret = sl_parse_quad(sound);
+      break;
+    }
+    case 6 : {
+      ret = sl_parse_51(sound);
+      break;
+    }
+    case 7 : {
+      ret = sl_parse_61(sound);
+      break;
+    }
+    case 8 : {
+      ret = sl_parse_71(sound);
+      break;
+    }
+    default : {
+      ret = SL_FAIL;
+      break;
+    }
+  }
+
+  return ret;
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_mono(SL_SOUND* sound) {
+  switch(sound->waveBuf->dataChunk.pcmType) {
+    case SL_UNSIGNED_8PCM : {
+      sound->format = AL_FORMAT_MONO8;
+      break;
+    }
+    case SL_SIGNED_16PCM : {
+      sound->format = AL_FORMAT_MONO16;
+      break;
+    }
+    case SL_FLOAT_32PCM : {
+      sound->format = AL_FORMAT_MONO_FLOAT32;
+      break;
+    }
+    case SL_FLOAT_64PCM : {
+      sound->format = AL_FORMAT_MONO_DOUBLE_EXT;
+      break;
+    }
+    default : return SL_FAIL;
+  }
+  return SL_SUCCESS;
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_stereo(SL_SOUND* sound) {
+  switch(sound->waveBuf->dataChunk.pcmType) {
+    case SL_UNSIGNED_8PCM : {
+      sound->format = AL_FORMAT_STEREO8;
+      break;
+    }
+    case SL_SIGNED_16PCM : {
+      sound->format = AL_FORMAT_STEREO16;
+      break;
+    }
+    case SL_FLOAT_32PCM : {
+      sound->format = AL_FORMAT_STEREO_FLOAT32;
+      break;
+    }
+    case SL_FLOAT_64PCM : {
+      sound->format = AL_FORMAT_STEREO_DOUBLE_EXT;
+      break;
+    }
+    default : return SL_FAIL;
+  }
+  return SL_SUCCESS;
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_quad(SL_SOUND* sound) {
+  switch(sound->waveBuf->dataChunk.pcmType) {
+    case SL_UNSIGNED_8PCM : {
+      sound->format = AL_FORMAT_QUAD8;
+      break;
+    }
+    case SL_SIGNED_16PCM : {
+      sound->format = AL_FORMAT_QUAD16;
+      break;
+    }
+    case SL_SIGNED_32PCM : {
+      sound->format = AL_FORMAT_QUAD32;
+      break;
+    }
+    case SL_FLOAT_32PCM : {
+      sound->format = AL_FORMAT_UHJ4CHN_FLOAT32_SOFT;
+      break;
+    }
+    default : return SL_FAIL;
+  }
+  return SL_SUCCESS;
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_51(SL_SOUND* sound) {
+  switch(sound->waveBuf->dataChunk.pcmType) {
+    case SL_UNSIGNED_8PCM : {
+      sound->format = AL_FORMAT_51CHN8;
+      break;
+    }
+    case SL_SIGNED_16PCM : {
+      sound->format = AL_FORMAT_51CHN16;
+      break;
+    }
+    case SL_SIGNED_32PCM : {
+      sound->format = AL_FORMAT_51CHN32;
+      break;
+    }
+    default : return SL_FAIL;
+  }
+  return SL_SUCCESS;
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_61(SL_SOUND* sound) {
+  switch(sound->waveBuf->dataChunk.pcmType) {
+    case SL_UNSIGNED_8PCM : {
+      sound->format = AL_FORMAT_61CHN8;
+      break;
+    }
+    case SL_SIGNED_16PCM : {
+      sound->format = AL_FORMAT_61CHN16;
+      break;
+    }
+    case SL_SIGNED_32PCM : {
+      sound->format = AL_FORMAT_61CHN32;
+      break;
+    }
+    default : return SL_FAIL;
+  }
+  return SL_SUCCESS;
+}
+
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_parse_71(SL_SOUND* sound) {
+  switch(sound->waveBuf->dataChunk.pcmType) {
+    case SL_UNSIGNED_8PCM : {
+      sound->format = AL_FORMAT_71CHN8;
+      break;
+    }
+    case SL_SIGNED_16PCM : {
+      sound->format = AL_FORMAT_71CHN16;
+      break;
+    }
+    case SL_SIGNED_32PCM : {
+      sound->format = AL_FORMAT_71CHN32;
+      break;
+    }
+    default : return SL_FAIL;
+  }
+  return SL_SUCCESS;
+}
+
+DLL_EXPORT_FUNCTION void sl_stop_sound(SL_SOUND* sound) {
+  if(sound->source) {
+    // Stop the source and delete the source
+    alSourceStop(sound->source);
+    alDeleteSources(1, &sound->source);
+    sound->source = 0;
+  }
+
+  if(sound->buffer) {
+    // Delete the buffer
+    alDeleteBuffers(1, &sound->buffer);
+    sound->buffer = 0;
+  }
+
+  if(sound->context) {
+    // Destroy the context
+    alcMakeContextCurrent(NULL);
+    alcDestroyContext(sound->context);
+    sound->context = NULL;
+  }
+
+  if(sound->device) {
+    // Close the device
+    alcCloseDevice(sound->device);
+    sound->device = NULL;
+  }
+}
+
+DLL_EXPORT_FUNCTION void sl_cleanup_sound(SL_SOUND* sound) {
+  if(sound != NULL) {
+    // stop sound
     sl_stop_sound(sound);
 
-    return SL_SUCCESS;
+    // free wav file
+    sl_cleanup_wave_file(sound->waveBuf);
+    sound->waveBuf = NULL;
+  }
 }
 
-DLL_EXPORT SL_RETURN_CODE sl_play_sound_b(SL_SOUND* sound) {
-    return sl_play_sound(sound, NULL);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
+  if(waveBuf == NULL)
+    return SL_FAIL;
+
+  memset(sound, 0, sizeof(SL_SOUND));
+
+  sound->waveBuf = waveBuf;
+  sound->gain = gain;
+  sound->pitch = pitch;
+  sound->freq = waveBuf->formatChunk.sampleRate;
+  sound->size = waveBuf->dataChunk.dataChunkSize;
+
+  SLint denom = sound->freq * waveBuf->formatChunk.numChannels * (waveBuf->formatChunk.bitsPerSample / 8);
+  sound->duration = ((sound->size / denom) / pitch) + 0.5f;
+
+  return sl_parse_sound_format(sound);
 }
 
-DLL_EXPORT SL_RETURN_CODE sl_play_sound_c(SLstr path, SLstr device, float gain, float pitch) {
-    SL_SOUND sound;
-    SL_WAV_FILE buf;
-    SL_RETURN_CODE out = sl_read_wave_file(path, &buf);
+DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch) {
+  SL_WAV_FILE buf;
+  SL_RETURN_CODE out = sl_read_wave_file(path, &buf);
 
-    if (out != SL_SUCCESS) return out;
+  if(out == SL_SUCCESS)
+    out = sl_gen_sound_a(sound, &buf, gain, pitch);
 
-    out = sl_gen_sound_a(&sound, &buf, gain, pitch);
-
-    if (out != SL_SUCCESS) {
-        sl_cleanup_wave_file(&buf);
-        return out;
-    }
-
-    out = sl_play_sound(&sound, device);
-
-    sl_cleanup_sound(&sound);
-
-    return out;
+  return out;
 }
 
-DLL_EXPORT SL_RETURN_CODE sl_parse_sound_format(SL_SOUND* sound) {
-    SL_RETURN_CODE ret;
+DLL_EXPORT_FUNCTION SLstr* sl_get_devices(void) {
+  if(alcIsExtensionPresent(NULL, "ALC_ENUMERATE_ALL_EXT") != AL_TRUE)
+    return NULL;
 
-    switch(sound->waveBuf->formatChunk.numChannels) {
-        case 1: {
-            ret = sl_parse_mono(sound);
-            break;
-        }
-        case 2: {
-            ret = sl_parse_stereo(sound);
-            break;
-        }
-        case 4: {
-            ret = sl_parse_quad(sound);
-            break;
-        }
-        case 6: {
-            ret = sl_parse_51(sound);
-            break;
-        }
-        case 7: {
-            ret = sl_parse_61(sound);
-            break;
-        }
-        case 8: {
-            ret = sl_parse_71(sound);
-            break;
-        }
-        default: {
-            ret = SL_FAIL;
-            break;
-        }
+  SLstr devices = alcGetString(NULL, ALC_ALL_DEVICES_SPECIFIER);
+  if(devices == NULL)
+    return NULL;
+
+  SLstr device = devices;
+
+  SLullong numDevices = 0;
+  while(*device != '\0') {
+    device += strlen(device) + 1;
+    numDevices++;
+  }
+
+  // Allocate memory for the array of device names
+  SLstr* arr = (SLstr*) malloc(((size_t) numDevices + 1) * sizeof(SLstr));
+  if(arr == NULL)
+    return NULL;
+
+  // Copy the device names into the array
+  device = devices;
+  for(SLullong i = 0; i < numDevices; i++) {
+    SLullong len = strlen(device);
+    arr[i] = strdup(device);
+    if(arr[i] == NULL) {
+      // clean up and return NULL
+      for(SLullong j = 0; j < i; j++) { free((void*) arr[j]); }
+      free(arr);
+      return NULL;
     }
+    device += len + 1;
+  }
 
-    return ret;
+  // Null-terminate the array
+  arr[numDevices] = NULL;
+
+  return arr;
 }
 
-DLL_EXPORT SL_RETURN_CODE sl_parse_mono(SL_SOUND* sound) {
-    switch(sound->waveBuf->dataChunk.pcmType) {
-        case SL_UNSIGNED_8PCM: {
-            sound->format = AL_FORMAT_MONO8;
-            break;
-        }
-        case SL_SIGNED_16PCM: {
-            sound->format = AL_FORMAT_MONO16;
-            break;
-        }
-        case SL_FLOAT_32PCM: {
-            sound->format = AL_FORMAT_MONO_FLOAT32;
-            break;
-        }
-        case SL_FLOAT_64PCM: {
-            sound->format = AL_FORMAT_MONO_DOUBLE_EXT;
-            break;
-        }
-        default:
-            return SL_FAIL;
-    }
-    return SL_SUCCESS;
+DLL_EXPORT_FUNCTION void sl_destroy_device_list(SLstr** devices) {
+  if(devices != NULL && *devices != NULL) {
+    // free device names
+    for(SLullong i = 0; (*devices)[i] != NULL; i++) free((void*) ((*devices)[i]));
+
+    free(*devices);
+    *devices = NULL;
+  }
 }
 
-DLL_EXPORT SL_RETURN_CODE sl_parse_stereo(SL_SOUND* sound) {
-    switch(sound->waveBuf->dataChunk.pcmType) {
-        case SL_UNSIGNED_8PCM: {
-            sound->format = AL_FORMAT_STEREO8;
-            break;
-        }
-        case SL_SIGNED_16PCM: {
-            sound->format = AL_FORMAT_STEREO16;
-            break;
-        }
-        case SL_FLOAT_32PCM: {
-            sound->format = AL_FORMAT_STEREO_FLOAT32;
-            break;
-        }
-        case SL_FLOAT_64PCM: {
-            sound->format = AL_FORMAT_STEREO_DOUBLE_EXT;
-            break;
-        }
-        default:
-            return SL_FAIL;
-    }
-    return SL_SUCCESS;
-}
-
-DLL_EXPORT SL_RETURN_CODE sl_parse_quad(SL_SOUND* sound) {
-    switch(sound->waveBuf->dataChunk.pcmType) {
-        case SL_UNSIGNED_8PCM: {
-            sound->format = AL_FORMAT_QUAD8;
-            break;
-        }
-        case SL_SIGNED_16PCM: {
-            sound->format = AL_FORMAT_QUAD16;
-            break;
-        }
-        case SL_SIGNED_32PCM: {
-            sound->format = AL_FORMAT_QUAD32;
-            break;
-        }
-        case SL_FLOAT_32PCM: {
-            sound->format = AL_FORMAT_UHJ4CHN_FLOAT32_SOFT;
-            break;
-        }
-        default:
-            return SL_FAIL;
-    }
-    return SL_SUCCESS;
-}
-
-DLL_EXPORT SL_RETURN_CODE sl_parse_51(SL_SOUND* sound) {
-    switch(sound->waveBuf->dataChunk.pcmType) {
-        case SL_UNSIGNED_8PCM: {
-            sound->format = AL_FORMAT_51CHN8;
-            break;
-        }
-        case SL_SIGNED_16PCM: {
-            sound->format = AL_FORMAT_51CHN16;
-            break;
-        }
-        case SL_SIGNED_32PCM: {
-            sound->format = AL_FORMAT_51CHN32;
-            break;
-        }
-        default:
-            return SL_FAIL;
-    }
-    return SL_SUCCESS;
-}
-
-DLL_EXPORT SL_RETURN_CODE sl_parse_61(SL_SOUND* sound) {
-    switch(sound->waveBuf->dataChunk.pcmType) {
-        case SL_UNSIGNED_8PCM: {
-            sound->format = AL_FORMAT_61CHN8;
-            break;
-        }
-        case SL_SIGNED_16PCM: {
-            sound->format = AL_FORMAT_61CHN16;
-            break;
-        }
-        case SL_SIGNED_32PCM: {
-            sound->format = AL_FORMAT_61CHN32;
-            break;
-        }
-        default:
-            return SL_FAIL;
-    }
-    return SL_SUCCESS;
-}
-
-DLL_EXPORT SL_RETURN_CODE sl_parse_71(SL_SOUND* sound) {
-    switch(sound->waveBuf->dataChunk.pcmType) {
-        case SL_UNSIGNED_8PCM: {
-            sound->format = AL_FORMAT_71CHN8;
-            break;
-        }
-        case SL_SIGNED_16PCM: {
-            sound->format = AL_FORMAT_71CHN16;
-            break;
-        }
-        case SL_SIGNED_32PCM: {
-            sound->format = AL_FORMAT_71CHN32;
-            break;
-        }
-        default:
-            return SL_FAIL;
-    }
-    return SL_SUCCESS;
-}
-
-DLL_EXPORT void sl_stop_sound(SL_SOUND* sound) {
-    if (sound->source) {
-        // Stop the source and delete the source
-        alSourceStop(sound->source);
-        alDeleteSources(1, &sound->source);
-        sound->source = 0;
-    }
-
-    if (sound->buffer) {
-        // Delete the buffer
-        alDeleteBuffers(1, &sound->buffer);
-        sound->buffer = 0;
-    }
-
-    if (sound->context) {
-        // Destroy the context
-        alcMakeContextCurrent(NULL);
-        alcDestroyContext(sound->context);
-        sound->context = NULL;
-    }
-
-    if (sound->device) {
-        // Close the device
-        alcCloseDevice(sound->device);
-        sound->device = NULL;
-    }
-}
-
-DLL_EXPORT void sl_cleanup_sound(SL_SOUND* sound) {
-    if(sound != NULL) {
-        //stop sound
-        sl_stop_sound(sound);
-
-        //free wav file
-        sl_cleanup_wave_file(sound->waveBuf);
-        sound->waveBuf = NULL;
-    }
-}
-
-DLL_EXPORT SL_RETURN_CODE sl_gen_sound_a(SL_SOUND* sound, SL_WAV_FILE* waveBuf, SLfloat gain, SLfloat pitch) {
-
-    if(waveBuf == NULL) return SL_FAIL;
-
-    memset(sound, 0, sizeof(SL_SOUND));
-
-    sound->waveBuf = waveBuf;
-    sound->gain    = gain;
-    sound->pitch   = pitch;
-    sound->freq    = waveBuf->formatChunk.sampleRate;
-    sound->size    = waveBuf->dataChunk.dataChunkSize;
-
-    SLint denom = sound->freq * waveBuf->formatChunk.numChannels * (waveBuf->formatChunk.bitsPerSample / 8);
-    sound->duration = ((sound->size / denom) / pitch) + 0.5;
-
-    return sl_parse_sound_format(sound);
-}
-
-DLL_EXPORT SL_RETURN_CODE sl_gen_sound(SL_SOUND* sound, SLstr path, SLfloat gain, SLfloat pitch) {
-    SL_WAV_FILE buf;
-    SL_RETURN_CODE out = sl_read_wave_file(path, &buf);
-
-    if (out == SL_SUCCESS) out = sl_gen_sound_a(sound, &buf, gain, pitch);
-
-    return out;
-}
-
-DLL_EXPORT SLstr* sl_get_devices(void) {
-    if (alcIsExtensionPresent(NULL, "ALC_ENUMERATE_ALL_EXT") != AL_TRUE) return NULL;
-
-    SLstr devices = alcGetString(NULL, ALC_ALL_DEVICES_SPECIFIER);
-    if (devices == NULL) return NULL;
-
-    SLstr device = devices;
-
-    SLullong numDevices = 0;
-    while (*device != '\0') {
-        device += strlen(device) + 1;
-        numDevices++;
-    }
-
-    // Allocate memory for the array of device names
-    SLstr* arr = (SLstr*)malloc((numDevices + 1) * sizeof(SLstr));
-    if (arr == NULL) return NULL;
-
-    // Copy the device names into the array
-    device = devices;
-    for (SLullong i = 0; i < numDevices; i++) {
-        SLullong len = strlen(device);
-        arr[i] = strdup(device);
-        if (arr[i] == NULL) {
-            // clean up and return NULL
-            for (SLullong j = 0; j < i; j++) {
-                free((void*)arr[j]);
-            }
-            free(arr);
-            return NULL;
-        }
-        device += len + 1;
-    }
-
-    // Null-terminate the array
-    arr[numDevices] = NULL;
-
-    return arr;
-}
-
-DLL_EXPORT void sl_destroy_device_list(SLstr** devices) {
-    if (devices != NULL && *devices != NULL) {
-        // free device names
-        for (SLullong i = 0; (*devices)[i] != NULL; i++) free((void*)((*devices)[i]));
-
-        free(*devices);
-        *devices = NULL;
-    }
-}
-
-#endif // SL_OPENAL_WRAPPER
+#endif  // SL_OPENAL_WRAPPER
 
 #ifdef __cplusplus
 }
-#endif // __cplusplus
+#endif  // __cplusplus
 
-#endif //SAL_SAL_H
+#endif  // SAL_SAL_H
