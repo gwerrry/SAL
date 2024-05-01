@@ -1,9 +1,9 @@
 #include "sal.h"
 
-//CHANGE THESE FOR WHAT TEST YOU WANT
+// CHANGE THESE FOR WHAT TEST YOU WANT
 
-//#define PARSER_TEST
-//#define AL_TEST
+// #define PARSER_TEST
+// #define AL_TEST
 #define SIMPLE_SOUND_TEST
 
 #ifdef PARSER_TEST
@@ -46,15 +46,14 @@ int main(void) {
     char path[256];
     char device_num_str[20];
 
-    if (devices == NULL) {
+    if(devices == NULL) {
         printf("Failed to get devices.\n");
         goto exit;
     }
 
     // Print the list of devices
     printf("List of sound devices: \n");
-    for (SLullong i = 0; devices[i] != NULL; i++)
-        printf("Device %lu: %s\n", i, devices[i]);
+    for(SLullong i = 0; devices[i] != NULL; i++) printf("Device %lu: %s\n", i, devices[i]);
 
     // Ask the user to choose a device
     printf("\nWhat device would you like to play? (-1 for default): ");
@@ -62,7 +61,8 @@ int main(void) {
     device_num = strtoull(device_num_str, NULL, 10);
 
     // Make a copy of the chosen device
-    if (device_num != -1) chosen_device = strdup(devices[device_num]);
+    if(device_num != -1)
+        chosen_device = strdup(devices[device_num]);
 
     // Clean up the device list
     sl_destroy_device_list(&devices);
@@ -80,7 +80,7 @@ int main(void) {
     }
     printf("Successfully parsed WAVE file at \"%s\".\n", path);
 
-    //Generate and play sound
+    // Generate and play sound
     out = sl_gen_sound_a(&sound, &buf, 1.f, 1.f);
 
     if(out != SL_SUCCESS) {
@@ -92,10 +92,11 @@ int main(void) {
     out = sl_play_sound(&sound, chosen_device);
     printf(out == SL_SUCCESS ? "Successfully played the sound.\n" : "Failed to play the sound.\n");
 
-    exit:
-        if(chosen_device != NULL) free((void*)chosen_device);
-        sl_cleanup_sound(&sound);
-        return out;
+exit:
+    if(chosen_device != NULL)
+        free((void*) chosen_device);
+    sl_cleanup_sound(&sound);
+    return out;
 }
 
 #elif defined(SIMPLE_SOUND_TEST)
@@ -116,8 +117,7 @@ int main(void) {
 
     // Print the list of devices
     printf("List of sound devices: \n");
-    for (SLullong i = 0; devices[i] != NULL; i++)
-        printf("Device %lu: %s\n", i, devices[i]);
+    for(SLullong i = 0; devices[i] != NULL; i++) printf("Device %llu: %s\n", i, devices[i]);
 
     // Ask the user to choose a device
     printf("\nWhat device would you like to play? (-1 for default): ");
@@ -125,7 +125,8 @@ int main(void) {
     device_num = strtoull(device_num_str, NULL, 10);
 
     // Make a copy of the chosen device
-    if (device_num != -1) chosen_device = strdup(devices[device_num]);
+    if(device_num != -1)
+        chosen_device = strdup(devices[device_num]);
 
     // Clean up the device list
     sl_destroy_device_list(&devices);
@@ -136,11 +137,13 @@ int main(void) {
     path[strcspn(path, "\n")] = 0;
 
     out = sl_play_sound_c(path, chosen_device, 1.f, 1.f);
-    if(out == SL_SUCCESS) printf("Successfully played the sound.\n");
-    else printf("Failed to play the sound.\n");
+    if(out == SL_SUCCESS)
+        printf("Successfully played the sound.\n");
+    else
+        printf("Failed to play the sound.\n");
 
-    exit:
-        free((void*)chosen_device);
-        return out;
+exit:
+    free((void*) chosen_device);
+    return out;
 }
 #endif
