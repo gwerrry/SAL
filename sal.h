@@ -107,7 +107,9 @@ DLL_EXPORT typedef enum {
   SL_MALLOC_FAIL = 66667,
   SL_INVALID_VALUE = 61616,
 
-  SL_FILE_ERROR = 62636,
+  SL_FILE_ERROR = 62630,
+  SL_NOT_A_FILE = 62631,
+  SL_NOT_A_WAVE_FILE = 62632, // todo make these in the 40 thousands
   SL_INVALID_WAVE_FORMAT = 63293,
 
   SL_INVALID_CHUNK_DESCRIPTOR_ID = 10000,
@@ -205,14 +207,14 @@ DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_is_file(SLstr path) {
 #elif defined(__linux__) || defined(__APPLE__)
 DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_is_file(SLstr path) {
   if(path == NULL)
-    return SL_FAIL;
+    return SL_NOT_A_FILE;
 
   struct stat buf;
   if(stat(path, &buf) != 0)
-    return SL_FAIL;
+    return SL_NOT_A_FILE;
 
   if(!S_ISREG(buf.st_mode))
-    return SL_FAIL;
+    return SL_NOT_A_FILE;
 
   return SL_SUCCESS;
 }
@@ -452,10 +454,8 @@ DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_read_wave_file(SLstr path, SL_WAV_FILE* wa
 
   // ensures that this file we are reading is a wave file-or at least ends with
   // it
-  if(sl_is_wave_file(path) == SL_FAIL) {
-    ret = SL_FILE_ERROR;
-    goto exit;
-  }
+  ret = sl_is_wave_file(path);
+  if(ret != SL_SUCCESS) goto exit;
 
   // try to open file
   file = fopen(path, "rb");
@@ -784,15 +784,15 @@ DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_ensure_wave_endianness(SL_WAV_FILE* wavBuf
 }
 
 DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_is_wave_file(SLstr path) {
-  if(!sl_is_file(path))
-    return SL_FAIL;
+  if(sl_is_file(path) != SL_SUCCESS)
+    return SL_NOT_A_FILE;
 
   SLullong path_len = strlen(path);
   SLullong wavExtensionLen = strlen(WAVE_EXTENSION_SHORT);
   SLullong waveExtensionLen = strlen(WAVE_EXTENSION_LONG);
 
   if(wavExtensionLen > path_len && waveExtensionLen > path_len)
-    return SL_FAIL;
+    return SL_NOT_A_WAVE_FILE;
 
   char* toCheck = (char*) malloc((sizeof(char) * (size_t) path_len) + 1);
 
@@ -807,7 +807,7 @@ DLL_EXPORT_FUNCTION SL_RETURN_CODE sl_is_wave_file(SLstr path) {
     toCheck[i] = tolower(toCheck[i]);
   }
 
-  SL_RETURN_CODE res = (strcmp(WAVE_EXTENSION_SHORT, toCheck + path_len - wavExtensionLen) == 0 || strcmp(WAVE_EXTENSION_LONG, toCheck + path_len - waveExtensionLen) == 0) ? SL_SUCCESS : SL_FAIL;
+  SL_RETURN_CODE res = (strcmp(WAVE_EXTENSION_SHORT, toCheck + path_len - wavExtensionLen) == 0 || strcmp(WAVE_EXTENSION_LONG, toCheck + path_len - waveExtensionLen) == 0) ? SL_SUCCESS : SL_NOT_A_WAVE_FILE;
 
   free(toCheck);
   return res;
